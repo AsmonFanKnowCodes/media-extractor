@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Media Extractor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Find images and videos on the current page. Preview, select, and download them in one place.",
   "minimum_chrome_version": "109",
   "permissions": ["activeTab", "scripting", "downloads", "storage"],
+  "host_permissions": ["http://127.0.0.1/*"],
   "action": { "default_title": "Extract media from this page" },
   "background": { "service_worker": "background.js", "type": "module" },
   "icons": {

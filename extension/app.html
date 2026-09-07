@@ -35,6 +35,69 @@
         </div>
         <span id="total" class="badge">0 files</span>
       </section>
+      <details id="youtube-panel" class="youtube-panel">
+        <summary>YouTube videos <span>Download video with audio</span></summary>
+        <div class="youtube-content">
+          <p>
+            Paste a video or Shorts link, or open the extension on a YouTube
+            video.
+          </p>
+          <form id="youtube-form" class="youtube-form">
+            <label class="youtube-link"
+              >YouTube video URL<input
+                id="youtube-url"
+                type="url"
+                required
+                placeholder="https://www.youtube.com/watch?v=…"
+            /></label>
+            <label
+              >Quality<select id="youtube-quality">
+                <option value="1080">Up to 1080p</option>
+                <option value="720">Up to 720p</option>
+                <option value="best">Best available</option>
+              </select></label
+            >
+            <button class="primary" id="youtube-download" type="submit">
+              Download video ↓
+            </button>
+          </form>
+          <p id="youtube-status" role="status" aria-live="polite">
+            Checking the local helper…
+          </p>
+          <details id="youtube-setup">
+            <summary>Connect local helper · one-time setup</summary>
+            <ol>
+              <li>
+                In the project folder, run
+                <strong>Setup YouTube Helper.cmd</strong> once.
+              </li>
+              <li>
+                Open <strong>Start YouTube Helper.cmd</strong> and keep it
+                running.
+              </li>
+              <li>Copy its pairing key here and click Connect.</li>
+            </ol>
+            <form id="youtube-connect-form" class="youtube-form">
+              <label class="youtube-link"
+                >Pairing key<input
+                  id="youtube-token"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Paste the key from the helper window"
+                  required /></label
+              ><button type="submit">Connect helper</button>
+            </form>
+          </details>
+          <div id="youtube-jobs" aria-label="YouTube downloads"></div>
+          <p class="hint">
+            Downloads continue while the helper runs, even if you close this
+            tab. Available quality depends on the video. MP4 is preferred; some
+            formats use MKV. Private, restricted, DRM-protected videos and
+            active live streams are not supported.
+          </p>
+        </div>
+      </details>
       <div class="toolbar">
         <div class="filters" aria-label="Filter by media type">
           <button data-filter="all" aria-pressed="true">
@@ -90,5 +153,6 @@
       </div>
     </footer>
     <script type="module" src="app.js"></script>
+    <script type="module" src="youtube.js"></script>
   </body>
 </html>

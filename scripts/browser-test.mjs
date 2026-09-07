@@ -4,13 +4,51 @@ import { mkdtemp, cp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import { createHelper } from "../helper/server.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const temp = await mkdtemp(path.join(tmpdir(), "media-extractor-test-"));
 const extension = path.join(temp, "extension");
 await cp(path.join(root, "extension"), extension, { recursive: true });
-// Only the temporary test copy receives localhost permission, so automated tests
-// can exercise real scripting/download APIs without clicking browser chrome.
+const helperToken = "b".repeat(64);
+const helper = createHelper({
+  token: helperToken,
+  executable: "fixture-downloader",
+  ffmpegDirectory: temp,
+  outputDirectory: temp,
+  spawnProcess: (_exe, args) => {
+    const child = new EventEmitter();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    setTimeout(async () => {
+      if (args.at(-1).endsWith("aaaaaaaaaaa")) {
+        child.stderr.write("ERROR: Video unavailable.\n");
+        child.emit("close", 1);
+        return;
+      }
+      const filename = path.join(temp, "YouTube fixture with audio.mp4");
+      await writeFile(filename, "fixture video and audio");
+      child.stdout.write(
+        `ME_PROGRESS 100.0%\nME_FILE ${JSON.stringify(filename)}\n`,
+      );
+      child.emit("close", 0);
+    }, 250);
+    return child;
+  },
+});
+await new Promise((resolve) => helper.listen(0, "127.0.0.1", resolve));
+const backgroundPath = path.join(extension, "background.js");
+await writeFile(
+  backgroundPath,
+  (await readFile(backgroundPath, "utf8")).replace(
+    "127.0.0.1:43127",
+    `127.0.0.1:${helper.address().port}`,
+  ),
+);
+// The helper's localhost permission also lets this temporary copy scan our local
+// fixture, exercising real scripting/download APIs without browser-toolbar clicks.
 const manifest = JSON.parse(
   await readFile(path.join(extension, "manifest.json")),
 );
@@ -186,8 +224,61 @@ try {
   console.log(
     "PASS: responsive layout, empty search, closed-tab error; no uncaught UI errors.",
   );
+  await app.setViewportSize({ width: 1440, height: 1100 });
+  await app.locator("#youtube-panel>summary").click();
+  await app.locator("#youtube-token").fill("c".repeat(64));
+  await app
+    .getByRole("button", { name: "Connect helper", exact: true })
+    .click();
+  await expect(app.locator("#youtube-status")).toContainText("did not match");
+  await app.locator("#youtube-token").fill(helperToken);
+  await app
+    .getByRole("button", { name: "Connect helper", exact: true })
+    .click();
+  await expect(app.locator("#youtube-status")).toContainText(
+    "Helper connected",
+  );
+  await app.evaluate(() => {
+    document.querySelector("#source-url").textContent =
+      "https://www.youtube.com/shorts/BaW_jenozKc";
+  });
+  await expect(app.locator("#youtube-url")).toHaveValue(
+    "https://www.youtube.com/watch?v=BaW_jenozKc",
+  );
+  await app
+    .getByRole("button", { name: "Download video ↓", exact: true })
+    .click();
+  await expect(app.locator('.youtube-job[data-state="complete"]')).toHaveCount(
+    1,
+  );
+  await expect(app.locator(".youtube-job")).toContainText("Saved:");
+  await app.locator("#youtube-url").fill("https://youtu.be/aaaaaaaaaaa");
+  await app
+    .getByRole("button", { name: "Download video ↓", exact: true })
+    .click();
+  await expect(app.locator('.youtube-job[data-state="failed"]')).toHaveCount(1);
+  console.log(
+    "PASS: YouTube pairing rejection/success, Shorts autofill, helper download lifecycle, saved filename and failure UI (fixture downloader).",
+  );
+  await app.screenshot({
+    path: path.join(root, "test-results", "youtube-desktop.png"),
+    fullPage: true,
+  });
+  await app.setViewportSize({ width: 375, height: 812 });
+  assert.equal(
+    await app.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+  );
+  await app.screenshot({
+    path: path.join(root, "test-results", "youtube-mobile.png"),
+    fullPage: true,
+  });
+  assert.deepEqual(errors, []);
 } finally {
   await context?.close();
   await new Promise((resolve) => server.close(resolve));
+  await new Promise((resolve) => helper.close(resolve));
   await rm(temp, { recursive: true, force: true });
 }
