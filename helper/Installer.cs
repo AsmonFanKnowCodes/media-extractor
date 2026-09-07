@@ -7,7 +7,7 @@ using System.Windows.Forms;
 class Installer {
   [STAThread] static void Main() {
     Application.EnableVisualStyles();
-    var form = new Form { Text="YouTube Video Downloader Setup", Width=460, Height=160, FormBorderStyle=FormBorderStyle.FixedDialog, MaximizeBox=false, MinimizeBox=false, StartPosition=FormStartPosition.CenterScreen };
+    var form = new Form { Text="Media Extractor Setup", Width=460, Height=160, FormBorderStyle=FormBorderStyle.FixedDialog, MaximizeBox=false, MinimizeBox=false, StartPosition=FormStartPosition.CenterScreen };
     form.Controls.Add(new Label { Text="Installing the background downloader…\nThis window will close when setup finishes.", Left=22, Top=18, Width=410, Height=45 });
     form.Controls.Add(new ProgressBar { Left=22, Top=75, Width=395, Style=ProgressBarStyle.Marquee });
     bool busy=true;
@@ -27,7 +27,7 @@ class Installer {
         } catch(Exception ex) { error=ex.Message; }
       });
       busy=false;
-      MessageBox.Show(form,error ?? "Installed. Reload YouTube Video Downloader in your browser's Extensions page, then reopen it. The downloader will start automatically.",error==null?"Setup complete":"Setup could not finish",MessageBoxButtons.OK,error==null?MessageBoxIcon.Information:MessageBoxIcon.Error);
+      MessageBox.Show(form,error ?? "Installed. Reload Media Extractor in your browser's Extensions page, then reopen it. The downloader will start automatically.",error==null?"Setup complete":"Setup could not finish",MessageBoxButtons.OK,error==null?MessageBoxIcon.Information:MessageBoxIcon.Error);
       form.Close();
     };
     Application.Run(form);

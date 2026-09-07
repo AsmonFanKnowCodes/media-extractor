@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizePost, PLATFORMS, QUALITIES } from "../extension/platforms.js";
 import { photoArgs, listPhotos } from "./photos.mjs";
+import { cookieArgs, LOGIN_BROWSERS } from "./browser-session.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const runFile = promisify(execFile);
@@ -18,6 +19,7 @@ export function downloadArgs(
   jobId,
   ffmpegDirectory,
   useBrowserSession = false,
+  loginBrowser = "brave",
 ) {
   const post = normalizePost(url);
   const normalized = post?.url;
@@ -63,9 +65,10 @@ export function downloadArgs(
     "download:ME_PROGRESS %(progress._percent_str)s",
     "--print",
     "after_move:ME_FILE %(filepath)j",
-    ...(useBrowserSession && post.platform !== "youtube"
-      ? ["--cookies-from-browser", "brave"]
-      : []),
+    ...cookieArgs(
+      useBrowserSession && post.platform !== "youtube",
+      loginBrowser,
+    ),
     "--",
     normalized,
   ];
@@ -143,7 +146,8 @@ export function createHelper({
       if (req.method === "GET" && req.url === "/v1/info")
         return send(200, {
           name: "Media Extractor Helper",
-          version: "6.0.0",
+          version: "6.1.0",
+          loginBrowsers: LOGIN_BROWSERS,
           platforms: Object.keys(PLATFORMS),
           photosAvailable: !!galleryExecutable,
           outputDirectory: await resolveOutputDirectory(),
@@ -198,7 +202,7 @@ export function createHelper({
       await mkdir(jobDirectory, { recursive: true });
       const args =
         mediaType === "photos"
-          ? photoArgs(url, jobDirectory, useBrowserSession)
+          ? photoArgs(url, jobDirectory, useBrowserSession, data.loginBrowser)
           : downloadArgs(
               url,
               data.quality,
@@ -206,6 +210,7 @@ export function createHelper({
               id,
               ffmpegDirectory,
               useBrowserSession,
+              data.loginBrowser,
             );
       const job = {
         id,

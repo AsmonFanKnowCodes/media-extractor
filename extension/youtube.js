@@ -13,14 +13,31 @@ let folderBusy = false;
 let sourceUrl = "";
 let sourceTitle = "";
 let lastVideoQuality = "1080";
-chrome.storage.local.get("useBrowserSession").then((value) => {
-  $("#use-browser-session").checked = value.useBrowserSession === true;
-});
-$("#use-browser-session").addEventListener("change", () =>
+let availableLoginBrowsers = ["brave"];
+chrome.storage.local
+  .get(["useBrowserSession", "loginBrowser"])
+  .then((value) => {
+    $("#use-browser-session").checked = value.useBrowserSession === true;
+    $("#login-browser").value =
+      value.loginBrowser || (value.useBrowserSession === true ? "brave" : "");
+    $("#login-browser").disabled = value.useBrowserSession !== true;
+  });
+$("#use-browser-session").addEventListener("change", () => {
+  $("#login-browser").disabled = !$("#use-browser-session").checked;
   chrome.storage.local.set({
     useBrowserSession: $("#use-browser-session").checked,
-  }),
+  });
+});
+$("#login-browser").addEventListener("change", () => {
+  chrome.storage.local.set({ loginBrowser: $("#login-browser").value });
+  $("#login-status").textContent = "";
+});
+let lastView = "download";
+$("#help-button").addEventListener("click", () =>
+  switchView($("#help-view").hidden ? "help" : lastView),
 );
+for (const button of document.querySelectorAll("[data-open-help]"))
+  button.addEventListener("click", () => switchView("help"));
 function updateSourceLabel() {
   const post = normalizePost($("#youtube-url").value);
   const matches = sourceUrl && post?.url === sourceUrl;
@@ -75,10 +92,13 @@ $("#media-kind").addEventListener("change", () => {
 $("#youtube-url").addEventListener("input", updateSourceLabel);
 $("#setup-shortcut").addEventListener("click", () => switchView("settings"));
 function switchView(view) {
+  if (view !== "help") lastView = view;
+  $("#help-button").setAttribute("aria-pressed", String(view === "help"));
   for (const button of document.querySelectorAll("[data-view]"))
     button.setAttribute("aria-pressed", String(button.dataset.view === view));
   for (const section of document.querySelectorAll(".view"))
     section.hidden = section.id !== `${view}-view`;
+  document.querySelector("main").scrollTop = 0;
 }
 for (const button of document.querySelectorAll("[data-view]"))
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -225,6 +245,7 @@ async function connect() {
       "Install the latest helper to enable additional platforms and photos.",
     );
   connected = true;
+  availableLoginBrowsers = info.loginBrowsers || ["brave"];
   connectionState(true);
   showFolder(info.outputDirectory);
   $("#youtube-status").textContent = "Ready to download.";
@@ -260,12 +281,25 @@ $("#youtube-form").addEventListener("submit", async (event) => {
   $("#youtube-download").disabled = true;
   try {
     if (!connected) await connect();
+    const useSession =
+      $("#use-browser-session").checked &&
+      normalizePost(url).platform !== "youtube";
+    const browser = $("#login-browser").value;
+    if (useSession && !availableLoginBrowsers.includes(browser)) {
+      switchView("settings");
+      $("#login-status").textContent = browser
+        ? "Update the helper to enable this login browser."
+        : "Choose the browser where you are signed in.";
+      $("#login-browser").focus();
+      return;
+    }
     const result = await request({
       type: "youtube-download",
       url,
       quality: $("#youtube-quality").value,
       mediaType: $("#media-kind").value,
       useBrowserSession: $("#use-browser-session").checked,
+      loginBrowser: browser,
     });
     if (result.job?.outputDirectory) showFolder(result.job.outputDirectory);
     $("#youtube-status").textContent =

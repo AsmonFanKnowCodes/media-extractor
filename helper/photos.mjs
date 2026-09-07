@@ -1,8 +1,14 @@
 import { normalizePost } from "../extension/platforms.js";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { cookieArgs } from "./browser-session.mjs";
 
-export function photoArgs(raw, folder, useBrowserSession = false) {
+export function photoArgs(
+  raw,
+  folder,
+  useBrowserSession = false,
+  loginBrowser = "brave",
+) {
   const post = normalizePost(raw);
   if (!post || post.platform === "youtube")
     throw new Error(
@@ -22,7 +28,7 @@ export function photoArgs(raw, folder, useBrowserSession = false) {
     "windows",
     "--filter",
     "extension.lower() in ('jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp')",
-    ...(useBrowserSession ? ["--cookies-from-browser", "brave"] : []),
+    ...cookieArgs(useBrowserSession, loginBrowser),
     "--",
     post.url,
   ];

@@ -78,6 +78,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         quality: message.quality,
         mediaType: message.mediaType,
         useBrowserSession: message.useBrowserSession === true,
+        loginBrowser: message.loginBrowser,
       });
     if (message.type === "youtube-source") {
       if (!Number.isInteger(message.tabId)) {

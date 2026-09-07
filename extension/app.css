@@ -97,6 +97,88 @@ header {
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.help-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+}
+.help-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.help-button[aria-pressed="true"] {
+  color: var(--primary-pressed);
+}
+.help-link {
+  margin-top: 8px;
+  width: 100%;
+}
+.help-support,
+.help-note {
+  background: var(--surface-alt);
+  border-radius: var(--radius-card);
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.help-steps {
+  padding-left: 21px;
+  margin: 21px 0;
+}
+.help-steps > li {
+  padding-left: 4px;
+  margin-bottom: 21px;
+}
+.help-steps h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.help-view p {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.help-view a {
+  color: var(--link);
+  font-size: 14px;
+  text-decoration: none;
+}
+.help-view a:hover {
+  text-decoration: underline;
+}
+.help-view strong {
+  font-weight: 600;
+}
+.browser-pages {
+  display: grid;
+  grid-template-columns: 65px 1fr;
+  gap: 8px;
+  font-size: 12px;
+}
+.browser-pages dd {
+  margin: 0;
+}
+.browser-pages code {
+  font-size: 12px;
+  user-select: all;
+}
+.help-full {
+  padding: 14px 0;
+}
 button,
 input,
 select {

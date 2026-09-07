@@ -83,7 +83,7 @@ You can close the popup. **Keep Brave running until downloads finish.** The back
 
 Supported platforms: YouTube, Instagram, X, Reddit, TikTok and Facebook. Use individual post links, not profile/feed URLs. For a mixed post, run Video and Photos separately.
 
-Some sites require login or block automated access. **Settings → Use my Brave login for social posts** is optional and off by default. Enabling it allows the local downloader to read Brave cookies to make authenticated requests. Only enable it for content you may access. Browser protection, account restrictions and website changes can still prevent a download.
+Some sites require login or block automated access. **Settings → Use my browser login for social posts** is optional and off by default. Enabling it allows the local downloader to read cookies from the browser you select to make authenticated requests. Only enable it for content you may access. Browser protection, account restrictions and website changes can still prevent a download.
 
 ## If something goes wrong
 
@@ -115,3 +115,5 @@ Verify that the post exists and that you can open it normally. If appropriate, e
 - To update the extension's code: download and extract the latest GitHub ZIP. If using a new folder, rerun its installer and load its `extension` folder. If updating the existing folder, replace the extension files together while the extension is not running, then click **Reload**.
 
 Saved downloads remain on disk. Keep the permanent project folder and do not leave multiple old copies of the extension enabled.
+
+For in-app instructions, click the **? Help** button in the popup header. It includes Node.js LTS and project ZIP links. For optional login access, choose **Brave**, **Google Chrome**, or **Microsoft Edge** in Settings; the helper uses only that selection. The current Windows installer does not support macOS, Linux, Firefox, Safari, or mobile browsers.

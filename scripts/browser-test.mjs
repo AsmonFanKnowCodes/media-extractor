@@ -79,6 +79,31 @@ try {
   );
   assert.equal(await app.locator("#youtube-token,#gallery,#scan").count(), 0);
   await expect(app.locator("#setup-banner")).toBeVisible();
+  await app
+    .getByRole("button", { name: "Help and installation", exact: true })
+    .click();
+  await expect(app.locator("#help-view")).toBeVisible();
+  await expect(
+    app.getByRole("link", { name: "Download Node.js LTS ↗", exact: true }),
+  ).toHaveAttribute("href", "https://nodejs.org/en/download");
+  await expect(
+    app.getByRole("link", { name: "Download project ZIP ↗", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    "https://github.com/AsmonFanKnowCodes/media-extractor/archive/refs/heads/main.zip",
+  );
+  await expect(app.locator("#help-view")).toContainText("chrome://extensions");
+  await expect(app.locator("#help-view")).toContainText("edge://extensions");
+  await expect(app.locator("#help-view")).toContainText("brave://extensions");
+  await mkdir(path.join(root, "test-results"), { recursive: true });
+  await app.screenshot({
+    path: path.join(root, "test-results", "help-panel.png"),
+    clip: { x: 0, y: 0, width: 420, height: 512 },
+  });
+  await app
+    .getByRole("button", { name: "Help and installation", exact: true })
+    .click();
+  await expect(app.locator("#download-view")).toBeVisible();
   await expect(
     app.getByRole("img", { name: "YouTube", exact: true }),
   ).toBeVisible();
@@ -90,6 +115,21 @@ try {
   });
   await app.getByRole("button", { name: "Set up", exact: true }).click();
   await expect(app.locator("#settings-view")).toBeVisible();
+  await expect(app.locator("#use-browser-session")).not.toBeChecked();
+  await expect(app.locator("#login-browser")).toBeDisabled();
+  await app.locator("#use-browser-session").check();
+  await app.locator("#login-browser").selectOption("edge");
+  await expect
+    .poll(
+      async () =>
+        (await app.evaluate(() => chrome.storage.local.get("loginBrowser")))
+          .loginBrowser,
+    )
+    .toBe("edge");
+  await app.locator("#use-browser-session").uncheck();
+  console.log(
+    "PASS: offline Help navigation, Node/repo links, three browser guides and explicit optional login-browser selection.",
+  );
   const permissions = await worker.evaluate(() => chrome.permissions.getAll());
   assert.ok(permissions.permissions.includes("nativeMessaging"));
   assert.equal((permissions.origins || []).length, 0);
@@ -313,9 +353,47 @@ try {
       photoJob.files.every((file) => file.startsWith(photoJob.directory)),
     );
   }
+  for (const browser of ["chrome", "edge"]) {
+    await app.locator('[data-view="settings"]').click();
+    await app.locator("#use-browser-session").check();
+    await app.locator("#login-browser").selectOption(browser);
+    await app.locator('[data-view="download"]').click();
+    await app
+      .locator("#youtube-url")
+      .fill(`https://www.instagram.com/p/AUTH_${browser}/`);
+    await app.locator("#media-kind").selectOption("video");
+    await app
+      .getByRole("button", { name: "Download video", exact: true })
+      .click();
+    await expect
+      .poll(
+        async () =>
+          (
+            await app.evaluate(() =>
+              chrome.runtime.sendMessage({ type: "youtube-jobs" }),
+            )
+          ).jobs[0]?.state,
+        { timeout: 15000 },
+      )
+      .toBe("complete");
+    const requestArgs = JSON.parse(
+      await readFile(path.join(nextFolder, "fixture-args.json"), "utf8"),
+    );
+    assert.equal(
+      requestArgs[requestArgs.indexOf("--cookies-from-browser") + 1],
+      browser,
+    );
+  }
+  await app.locator('[data-view="settings"]').click();
+  await app.locator("#use-browser-session").uncheck();
+  await app.locator('[data-view="download"]').click();
   await app
     .locator("#youtube-url")
     .fill("https://www.instagram.com/p/PARTIAL/");
+  await app.locator("#media-kind").selectOption("photos");
+  console.log(
+    "PASS: Chrome and Edge login choices reach the fixture downloader through the real native bridge; no browser cookies read.",
+  );
   await app
     .getByRole("button", { name: "Download photos", exact: true })
     .click();

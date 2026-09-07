@@ -28,7 +28,7 @@ $binDirectory = Join-Path $Destination 'bin'
 $extensionDirectory = Join-Path $Destination 'extension'
 New-Item -ItemType Directory -Path $Destination,$helperDirectory,$binDirectory,$extensionDirectory -Force | Out-Null
 Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $Destination 'node.exe') -Force
-foreach ($name in @('server.mjs','native.mjs','native-protocol.mjs','settings.mjs','photos.mjs')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force }
+foreach ($name in @('server.mjs','native.mjs','native-protocol.mjs','settings.mjs','photos.mjs','browser-session.mjs')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force }
 Copy-Item -LiteralPath (Join-Path $projectRoot 'extension\youtube-url.js') -Destination (Join-Path $extensionDirectory 'youtube-url.js') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'extension\platforms.js') -Destination (Join-Path $extensionDirectory 'platforms.js') -Force
 Copy-Item -LiteralPath $oldConfig.executable -Destination (Join-Path $binDirectory 'yt-dlp.exe') -Force

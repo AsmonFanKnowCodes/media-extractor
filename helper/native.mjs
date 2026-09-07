@@ -78,6 +78,7 @@ const decode = createDecoder(async (message) => {
             quality: message.params?.quality,
             mediaType: message.params?.mediaType,
             useBrowserSession: message.params?.useBrowserSession,
+            loginBrowser: message.params?.loginBrowser,
           }
         : null;
     const response = await fetch(base + route, {

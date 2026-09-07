@@ -15,7 +15,22 @@
         ></span>
         <div>Media Extractor</div>
       </div>
-      <span id="connection-label" class="connection">Connecting</span>
+      <div class="header-actions">
+        <span id="connection-label" class="connection">Connecting</span
+        ><button
+          id="help-button"
+          class="help-button"
+          type="button"
+          aria-label="Help and installation"
+          aria-pressed="false"
+          title="Help and installation"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 16.5v.1" />
+          </svg>
+        </button>
+      </div>
     </header>
     <nav class="tabs" aria-label="Downloader sections">
       <button data-view="download" aria-pressed="true">Download</button
@@ -148,18 +163,29 @@
             Cloned from Git? Run Install YouTube Downloader.cmd instead.
           </p>
           <button id="youtube-retry" type="button">Check connection</button>
+          <button class="help-link" data-open-help type="button">
+            Installation guide
+          </button>
         </details>
         <p id="connection-detail" class="fine-print"></p>
         <div class="settings-note">
           <label class="session-toggle"
-            ><input id="use-browser-session" type="checkbox" />Use my Brave
+            ><input id="use-browser-session" type="checkbox" />Use my browser
             login for social posts</label
           >
           <p>
-            Optional. Lets the local downloader read Brave cookies to sign in.
-            Turn on only for posts you can access. Browser protections may
-            prevent session access.
+            Optional. Lets the local downloader read cookies from the browser
+            you choose to sign in. Turn on only for posts you can access.
+            Browser protections may prevent session access.
           </p>
+          <label for="login-browser">Browser you are signed into</label
+          ><select id="login-browser" disabled>
+            <option value="">Choose your browser…</option>
+            <option value="brave">Brave</option>
+            <option value="chrome">Google Chrome</option>
+            <option value="edge">Microsoft Edge</option>
+          </select>
+          <p id="login-status" class="fine-print" role="status"></p>
           <strong>About quality</strong>
           <p>
             Video limits: 720p, 1080p, 1440p, or 4K. Best available has no cap.
@@ -173,10 +199,139 @@
           </p>
         </div>
       </section>
+      <section
+        id="help-view"
+        class="view help-view"
+        aria-label="Help and installation"
+        hidden
+      >
+        <h2>Get started.</h2>
+        <p class="intro">One setup. Then just open and download.</p>
+        <p class="help-support">
+          Windows 10/11 · 64-bit<br />Brave, Google Chrome &amp; Microsoft Edge
+        </p>
+        <ol class="help-steps">
+          <li>
+            <h3>Install Node.js LTS</h3>
+            <p>
+              Choose LTS, version 22 or newer, then Windows Installer (.msi),
+              x64. Run it with the default options. Skip if already installed.
+            </p>
+            <a
+              href="https://nodejs.org/en/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Download Node.js LTS ↗</a
+            >
+          </li>
+          <li>
+            <h3>Download the project</h3>
+            <p>
+              Get the ZIP and use <strong>Extract All</strong>. Keep the
+              extracted folder somewhere permanent, such as Documents.
+            </p>
+            <a
+              href="https://github.com/AsmonFanKnowCodes/media-extractor/archive/refs/heads/main.zip"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Download project ZIP ↗</a
+            >
+          </li>
+          <li>
+            <h3>Run the one-time installer</h3>
+            <p>
+              Close browsers using this extension. In the extracted project,
+              double-click <strong>Install YouTube Downloader.cmd</strong> and
+              wait for Setup complete. Despite the old filename, it installs all
+              supported tools.
+            </p>
+          </li>
+          <li>
+            <h3>Load and pin the extension</h3>
+            <p>
+              Open your browser’s Extensions page, enable
+              <strong>Developer mode</strong>, choose
+              <strong>Load unpacked</strong>, and select the project’s
+              <strong>extension</strong> folder—the one containing
+              manifest.json. Then pin Media Extractor.
+            </p>
+            <dl class="browser-pages">
+              <dt>Brave</dt>
+              <dd><code>brave://extensions</code></dd>
+              <dt>Chrome</dt>
+              <dd><code>chrome://extensions</code></dd>
+              <dt>Edge</dt>
+              <dd><code>edge://extensions</code></dd>
+            </dl>
+          </li>
+          <li>
+            <h3>Save your first post</h3>
+            <p>
+              Open the popup, wait for Ready, paste a supported link, and choose
+              Video or Photos. Change the folder in Settings. Follow progress in
+              Activity.
+            </p>
+          </li>
+        </ol>
+        <div class="help-note">
+          <strong>No terminal stays open.</strong>
+          <p>
+            The helper starts automatically. You may close the popup, but keep
+            the browser running until downloads finish.
+          </p>
+        </div>
+        <details>
+          <summary>Starting over or seeing errors?</summary>
+          <p>
+            Remove the old copy on the Extensions page, close that browser, then
+            follow the steps above. Saved media is not deleted.
+          </p>
+          <p>
+            <strong>Script-loading error:</strong> extract the whole ZIP; don’t
+            move or delete its files. Clear old errors, then Reload. If it
+            returns, remove and load the extension again.
+          </p>
+          <p>
+            <strong>Helper not found:</strong> rerun the installer from the same
+            project folder you loaded, then reopen the browser.
+          </p>
+        </details>
+        <details>
+          <summary>Friends using another browser?</summary>
+          <p>
+            Windows versions of Brave, Chrome and Edge are supported. Each
+            friend installs Node, the helper, and the extension on their own PC.
+            The current installer does not support macOS, Linux, Firefox, Safari
+            or mobile browsers.
+          </p>
+          <p>
+            For optional social-post login, choose the browser where you are
+            signed in under Settings. Session access is off by default and can
+            still be blocked by browser protections or site restrictions.
+          </p>
+        </details>
+        <details>
+          <summary>Updating later</summary>
+          <p>
+            Finish downloads, close browsers using Media Extractor, then run
+            <strong>Update YouTube Downloader.cmd</strong>. For new extension
+            code, download the latest project and reload the extension. If its
+            folder moved, rerun the installer from the new location.
+          </p>
+        </details>
+        <p class="help-full">
+          <a
+            href="https://github.com/AsmonFanKnowCodes/media-extractor/blob/main/INSTALL.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Open the full installation guide ↗</a
+          >
+        </p>
+      </section>
     </main>
     <footer>
       <span class="footer-dot" aria-hidden="true"></span>Downloads continue when
-      this popup closes.<span class="footer-sub">Keep Brave open.</span>
+      this popup closes.<span class="footer-sub">Keep your browser open.</span>
     </footer>
     <script type="module" src="youtube.js"></script>
   </body>
