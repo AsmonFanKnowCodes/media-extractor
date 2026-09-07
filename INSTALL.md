@@ -57,16 +57,16 @@ The setup download or extracted source folder can be removed afterward. Keep the
 
 1. Open a supported post and click the pinned extension icon, or paste a post link into the popup.
 2. Wait for **Ready**.
-3. Choose **Video** or **Photos**. YouTube supports Video only.
+3. Click **Scan link**, then select the photos and videos you want.
 4. Choose a video limit: 720p, 1080p, 1440p, 4K, or **Best available**. Photos use their supplied resolution; no upscaling is performed.
 5. Change **Save location** if desired.
-6. Click **Download** and check **Activity** for progress and saved files.
+6. Click **Download selected** and check **Activity** for scan/download progress and saved files.
 
 You may close the popup. Keep your browser running until downloads finish. On later uses, just click the extension—there is no manual helper startup.
 
 ## Social-post login
 
-YouTube, Instagram, X, Reddit, TikTok and Facebook post links are supported. Some sites require login or block automated access.
+YouTube, Instagram, X, Reddit, TikTok, Facebook, Pinterest and Threads post links are supported. Some sites require login or block automated access.
 
 Optional login access is **off by default**. To enable it, open Settings, turn on **Use my browser login for social posts**, and select the browser where you are signed in. This permits the local downloader to read that browser's cookies for authenticated requests. Browser protections and site restrictions may still prevent access. It does not apply to YouTube or bypass DRM/access restrictions.
 
@@ -95,3 +95,5 @@ For developers or users who prefer source:
 3. It builds and opens the same setup wizard. Follow the normal steps above.
 
 Node.js and npm are not required to build this installer; the bootstrap uses the .NET Framework compiler included with Windows. The older YouTube-named CMD files remain compatibility shortcuts, but new instructions use Media Extractor names.
+
+For version 8, rerun the updated installer and reload the extension. Accept the page-reading permission if prompted: it is used only to read the matching open post during Scan. URL/feed detection is unchanged. If scan notes mention login or missing slides, open and load the post, or explicitly enable the matching browser login if appropriate, then rescan.

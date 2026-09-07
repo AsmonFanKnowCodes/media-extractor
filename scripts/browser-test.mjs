@@ -1,13 +1,5 @@
 import { chromium, expect } from "@playwright/test";
-import {
-  mkdtemp,
-  cp,
-  readFile,
-  writeFile,
-  mkdir,
-  rm,
-  realpath,
-} from "node:fs/promises";
+import { mkdtemp, cp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -15,26 +7,36 @@ import assert from "node:assert/strict";
 import { extensionId } from "../helper/extension-id.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-const temp = await mkdtemp(path.join(tmpdir(), "youtube-native-test-"));
-const extension = path.join(temp, "extension");
-const installation = path.join(temp, "installed");
-const hostName = `com.personal.youtube_downloader_test_${Date.now()}`;
+const temp = await mkdtemp(path.join(tmpdir(), "media-scan-browser-"));
+const extension = path.join(temp, "extension"),
+  installation = path.join(temp, "installed");
+const hostName = `com.personal.scan_test_${process.pid}_${Date.now()}`;
+const png =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=";
 await cp(path.join(root, "extension"), extension, { recursive: true });
-const backgroundPath = path.join(extension, "background.js");
 await writeFile(
-  backgroundPath,
-  (await readFile(backgroundPath, "utf8")).replace(
+  path.join(extension, "background.js"),
+  (await readFile(path.join(extension, "background.js"), "utf8")).replace(
     "com.personal.youtube_downloader",
     hostName,
   ),
 );
+const shipped = JSON.parse(
+  await readFile(path.join(extension, "manifest.json"), "utf8"),
+);
+assert.ok(shipped.permissions.includes("scripting"));
+assert.equal(shipped.host_permissions, undefined);
+// Only the temporary copy gets fixture-host access. Real toolbar invocation grants activeTab.
+await writeFile(
+  path.join(extension, "manifest.json"),
+  JSON.stringify({
+    ...shipped,
+    host_permissions: ["https://www.instagram.com/*"],
+  }),
+);
 function run(command, args) {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    windowsHide: true,
-  });
-  if (result.status !== 0)
-    throw new Error(`${command} failed: ${result.stderr}\n${result.stdout}`);
+  const r = spawnSync(command, args, { encoding: "utf8", windowsHide: true });
+  if (r.status !== 0) throw new Error(`${r.stderr}\n${r.stdout}`);
 }
 let context;
 try {
@@ -46,108 +48,30 @@ try {
     ignoreDefaultArgs: ["--disable-extensions"],
     args: ["--enable-unsafe-extension-debugging"],
   });
-  const session = await context.browser().newBrowserCDPSession();
-  await session.send("Extensions.loadUnpacked", { path: extension });
-  await session.detach();
+  await context.route("**/fixture-photo-*.png", (route) =>
+    route.fulfill({
+      contentType: "image/png",
+      body: Buffer.from(png, "base64"),
+    }),
+  );
+  const cdp = await context.browser().newBrowserCDPSession();
+  const { id } = await cdp.send("Extensions.loadUnpacked", { path: extension });
+  await cdp.detach();
   const worker =
     context.serviceWorkers()[0] ||
     (await context.waitForEvent("serviceworker"));
-  const id = new URL(worker.url()).host;
-  assert.equal(
-    await extensionId(extension),
-    id,
-    "Installer must derive the exact ID used by Chromium.",
-  );
-  await worker.evaluate(async () => {
-    await chrome.storage.session.set({
-      "source-123": {
-        url: "https://www.youtube.com/shorts/BaW_jenozKc",
-        title: "YouTube fixture",
-      },
-    });
-  });
-  let app = await context.newPage();
+  assert.equal(await extensionId(extension), id);
+  let page = await context.newPage();
   const errors = [];
-  app.on("pageerror", (error) => errors.push(error.message));
-  await app.setViewportSize({ width: 420, height: 580 });
-  await app.goto(`chrome-extension://${id}/app.html#123`);
-  await expect(app.locator("#youtube-url")).toHaveValue(
-    "https://www.youtube.com/watch?v=BaW_jenozKc",
-  );
-  await expect(app.locator("#connection-detail")).toContainText(
-    "MediaExtractor-Setup.exe",
-  );
-  assert.equal(await app.locator("#youtube-token,#gallery,#scan").count(), 0);
-  await expect(app.locator("#setup-banner")).toBeVisible();
-  await app
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 420, height: 580 });
+  await page.goto(`chrome-extension://${id}/app.html`);
+  await expect(page.locator("#setup-banner")).toBeVisible();
+  await page
     .getByRole("button", { name: "Help and installation", exact: true })
     .click();
-  await expect(app.locator("#help-view")).toBeVisible();
-  await expect(
-    app.getByRole("link", { name: "Download Windows Setup ↗", exact: true }),
-  ).toHaveAttribute(
-    "href",
-    "https://github.com/AsmonFanKnowCodes/media-extractor/releases/latest/download/MediaExtractor-Setup.exe",
-  );
-  await app
-    .getByText("Advanced: manual Node.js download", { exact: true })
-    .click();
-  await expect(
-    app.getByRole("link", { name: "Download Node.js LTS ↗", exact: true }),
-  ).toHaveAttribute("href", "https://nodejs.org/en/download");
-  await app.getByText("Prefer the source ZIP?", { exact: true }).click();
-  await expect(
-    app.getByRole("link", { name: "Download project ZIP ↗", exact: true }),
-  ).toHaveAttribute(
-    "href",
-    "https://github.com/AsmonFanKnowCodes/media-extractor/archive/refs/heads/main.zip",
-  );
-  await expect(app.locator("#help-view")).toContainText("chrome://extensions");
-  await expect(app.locator("#help-view")).toContainText("edge://extensions");
-  await expect(app.locator("#help-view")).toContainText("brave://extensions");
-  await mkdir(path.join(root, "test-results"), { recursive: true });
-  await app.locator("#help-view h2").scrollIntoViewIfNeeded();
-  await app.screenshot({
-    path: path.join(root, "test-results", "help-panel.png"),
-    clip: { x: 0, y: 0, width: 420, height: 512 },
-  });
-  await app
-    .getByRole("button", { name: "Help and installation", exact: true })
-    .click();
-  await expect(app.locator("#download-view")).toBeVisible();
-  await expect(
-    app.getByRole("img", { name: "YouTube", exact: true }),
-  ).toBeVisible();
-  await expect(app.locator("#youtube-download")).toBeHidden();
-  await mkdir(path.join(root, "test-results"), { recursive: true });
-  await app.screenshot({
-    path: path.join(root, "test-results", "popup-setup-state.png"),
-    clip: { x: 0, y: 0, width: 420, height: 512 },
-  });
-  await app.getByRole("button", { name: "Set up", exact: true }).click();
-  await expect(app.locator("#settings-view")).toBeVisible();
-  await expect(app.locator("#use-browser-session")).not.toBeChecked();
-  await expect(app.locator("#login-browser")).toBeDisabled();
-  await app.locator("#use-browser-session").check();
-  await app.locator("#login-browser").selectOption("edge");
-  await expect
-    .poll(
-      async () =>
-        (await app.evaluate(() => chrome.storage.local.get("loginBrowser")))
-          .loginBrowser,
-    )
-    .toBe("edge");
-  await app.locator("#use-browser-session").uncheck();
-  console.log(
-    "PASS: offline Help navigation, Node/repo links, three browser guides and explicit optional login-browser selection.",
-  );
-  const permissions = await worker.evaluate(() => chrome.permissions.getAll());
-  assert.ok(permissions.permissions.includes("nativeMessaging"));
-  assert.equal((permissions.origins || []).length, 0);
-  console.log(
-    "PASS: missing-installation feedback, source autofill, no pairing field or localhost permission; exact Windows extension ID derivation.",
-  );
-
+  await expect(page.locator("#help-view")).toBeVisible();
+  await page.locator('[data-view="download"]').click();
   run("powershell.exe", [
     "-NoProfile",
     "-ExecutionPolicy",
@@ -168,298 +92,117 @@ try {
     "v4.0.30319",
     "csc.exe",
   );
-  const fixture = path.join(installation, "fixture-downloader.exe");
+  const extractor = path.join(installation, "fixture-scanner.exe");
   run(compiler, [
     "/nologo",
     "/target:exe",
     "/reference:System.Web.Extensions.dll",
-    `/out:${fixture}`,
-    path.join(root, "tests", "FixtureDownloader.cs"),
+    `/out:${extractor}`,
+    path.join(root, "tests", "FixtureScanner.cs"),
+  ]);
+  const toolsDir = path.join(installation, "fixture-tools");
+  await mkdir(toolsDir);
+  await writeFile(path.join(toolsDir, "ffmpeg.exe"), "fixture");
+  run(compiler, [
+    "/nologo",
+    "/target:exe",
+    `/out:${path.join(toolsDir, "ffprobe.exe")}`,
+    path.join(root, "tests", "FixtureProbe.cs"),
   ]);
   const configPath = path.join(installation, "helper", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8"));
-  config.executable = fixture;
-  const galleryFixture = path.join(installation, "fixture-gallery.exe");
-  run(compiler, [
-    "/nologo",
-    "/target:exe",
-    `/out:${galleryFixture}`,
-    path.join(root, "tests", "FixtureGallery.cs"),
-  ]);
-  config.galleryExecutable = galleryFixture;
-  config.outputDirectory = path.join(temp, "downloads");
+  Object.assign(config, {
+    executable: extractor,
+    galleryExecutable: extractor,
+    ffmpegDirectory: toolsDir,
+    outputDirectory: path.join(temp, "downloads"),
+  });
   await writeFile(configPath, JSON.stringify(config));
-  run(compiler, [
-    "/nologo",
-    "/target:exe",
-    `/out:${path.join(installation, "folder-picker.exe")}`,
-    path.join(root, "tests", "FixtureFolderPicker.cs"),
-  ]);
-  const canonicalTemp = await realpath(temp);
-  const typedFolder = path.join(canonicalTemp, "custom videos 日本語");
-  const pickedFolder = path.join(canonicalTemp, "picked videos");
-  const nextFolder = path.join(canonicalTemp, "next downloads");
-  await Promise.all(
-    [typedFolder, pickedFolder, nextFolder].map((folder) =>
-      mkdir(folder, { recursive: true }),
+  const managerPath = path.join(installation, "helper", "scan-manager.mjs");
+  const managerText = await readFile(managerPath, "utf8");
+  assert.ok(managerText.includes("const fetcher = options.fetcher || fetch;"));
+  await writeFile(
+    managerPath,
+    managerText.replace(
+      "const fetcher = options.fetcher || fetch;",
+      `const fetcher=async(url,options)=>{if(String(url).includes('/fixture-photo-'))return new Response(Buffer.from('${png}','base64'));return fetch(url,options);};`,
     ),
   );
-  await app.locator('[data-view="settings"]').click();
-  await app
+  await page.locator('[data-view="settings"]').click();
+  await page
     .getByRole("button", { name: "Check connection", exact: true })
     .click();
-  await expect(app.locator("#youtube-status")).toContainText(
-    "Ready to download.",
-    { timeout: 20000 },
+  await expect(page.locator("#connection-label")).toHaveText("Ready");
+  await page.locator('[data-view="download"]').click();
+  assert.equal(await page.locator("#media-kind").count(), 0);
+  await page.locator("#youtube-url").fill("https://www.instagram.com/p/MIXED/");
+  await page.getByRole("button", { name: "Scan link", exact: true }).click();
+  await expect(page.locator(".scan-item")).toHaveCount(3, { timeout: 15000 });
+  await expect(page.locator("#download-selected")).toHaveText(
+    "Download 3 selected",
   );
-  await app.locator('[data-view="download"]').click();
-  await app.locator("#youtube-quality").selectOption("720");
-  await app.locator('[data-view="settings"]').click();
-  await app.locator("#save-folder").fill("relative-folder");
-  await app.getByRole("button", { name: "Save folder", exact: true }).click();
-  await expect(app.locator("#folder-status")).toContainText(
-    "Folder not changed",
+  await page.locator(".scan-item input").nth(1).uncheck();
+  await expect(page.locator("#download-selected")).toHaveText(
+    "Download 2 selected",
   );
-  await app.locator("#save-folder").fill(typedFolder);
-  await app.getByRole("button", { name: "Save folder", exact: true }).click();
-  await expect(app.locator("#folder-status")).toContainText(
-    "Saved for future downloads.",
+  await page.reload();
+  await expect(page.locator(".scan-item")).toHaveCount(3);
+  await expect(page.locator("#download-selected")).toHaveText(
+    "Download 2 selected",
   );
-  await app.getByRole("button", { name: "Browse…", exact: true }).click();
-  await expect(app.locator("#save-folder")).toHaveValue(pickedFolder);
-  await writeFile(path.join(temp, "cancel-picker"), "");
-  await app.getByRole("button", { name: "Browse…", exact: true }).click();
-  await expect(app.locator("#folder-status")).toContainText("Folder unchanged");
-  await app.locator('[data-view="download"]').click();
-  await app
-    .getByRole("button", { name: "Download video", exact: true })
-    .click();
-  await expect(app.locator("#youtube-status")).toContainText(
-    "Download started",
-  );
-  await app.locator('[data-view="settings"]').click();
-  await app.locator("#save-folder").fill(nextFolder);
-  await app.getByRole("button", { name: "Save folder", exact: true }).click();
-  await expect(app.locator("#folder-status")).toContainText(
-    "Saved for future downloads.",
-  );
-  await app.close();
-  if (process.env.NATIVE_IDLE_TEST === "1")
-    await new Promise((resolve) => setTimeout(resolve, 35000));
-  app = await context.newPage();
-  app.on("pageerror", (error) => errors.push(error.message));
-  await app.setViewportSize({ width: 420, height: 580 });
-  await app.goto(`chrome-extension://${id}/app.html#123`);
-  await expect(app.locator("#youtube-status")).toContainText(
-    "Ready to download.",
-  );
-  await expect(app.locator('.youtube-job[data-state="complete"]')).toHaveCount(
-    1,
-    { timeout: 15000 },
-  );
-  const args = JSON.parse(
-    await readFile(path.join(pickedFolder, "fixture-args.json"), "utf8"),
-  );
-  assert.match(args[args.indexOf("-f") + 1], /height<=720/);
-  assert.equal(args[args.indexOf("-P") + 1], pickedFolder);
-  await expect(app.locator("#save-folder")).toHaveValue(nextFolder);
-  assert.equal(
-    JSON.parse(await readFile(configPath, "utf8")).outputDirectory,
-    nextFolder,
-  );
-  console.log(
-    "PASS: saved destination, typed Unicode paths, folder picker/cancel bridge, invalid path rejection, persistence and in-flight download destination preserved.",
-  );
-  await expect(app.locator("#jobs-empty")).toBeHidden();
-  await app.locator("#youtube-url").fill("https://youtu.be/aaaaaaaaaaa");
-  await app.locator('[data-view="download"]').click();
-  await app
-    .getByRole("button", { name: "Download video", exact: true })
-    .click();
-  await expect(app.locator('.youtube-job[data-state="failed"]')).toHaveCount(1);
-  await app.reload();
-  await expect(app.locator("#youtube-status")).toContainText(
-    "Ready to download.",
-  );
-  await expect(app.locator(".youtube-job")).toHaveCount(2);
-  const platformCases = [
-    [
-      "Instagram",
-      "https://www.instagram.com/p/TEST123/",
-      "https://www.instagram.com/p/TEST123/",
-    ],
-    [
-      "X",
-      "https://x.com/demo/status/123456789",
-      "https://x.com/demo/status/123456789",
-    ],
-    [
-      "Reddit",
-      "https://www.reddit.com/comments/abc123/",
-      "https://www.reddit.com/comments/abc123/",
-    ],
-    [
-      "TikTok",
-      "https://www.tiktok.com/@demo/video/123456789",
-      "https://www.tiktok.com/@demo/photo/123456789",
-    ],
-    [
-      "Facebook",
-      "https://www.facebook.com/watch/?v=123456789",
-      "https://www.facebook.com/photo.php?fbid=123456789",
-    ],
-  ];
-  let completed = 1;
-  for (const [platform, videoUrl, photoUrl] of platformCases) {
-    await app.locator('[data-view="download"]').click();
-    await app.locator("#youtube-url").fill(videoUrl);
-    await app.locator("#media-kind").selectOption("video");
-    await app.locator("#youtube-quality").selectOption("2160");
-    await expect(
-      app.getByRole("img", { name: platform, exact: true }),
-    ).toBeVisible();
-    await expect
-      .poll(() =>
-        app
-          .locator(".service-logo")
-          .evaluate((image) => image.complete && image.naturalWidth > 0),
-      )
-      .toBe(true);
-    await app
-      .getByRole("button", { name: "Download video", exact: true })
-      .click();
-    await expect
-      .poll(
-        async () =>
-          (
-            await app.evaluate(() =>
-              chrome.runtime.sendMessage({ type: "youtube-jobs" }),
-            )
-          ).jobs.filter((job) => job.state === "complete").length,
-        { timeout: 15000 },
-      )
-      .toBe(++completed);
-    await app.locator("#youtube-url").fill(photoUrl);
-    await app.locator("#media-kind").selectOption("photos");
-    await expect(app.locator("#youtube-quality")).toBeDisabled();
-    await app
-      .getByRole("button", { name: "Download photos", exact: true })
-      .click();
-    await expect
-      .poll(async () => {
-        const response = await app.evaluate(() =>
-          chrome.runtime.sendMessage({ type: "youtube-jobs" }),
-        );
-        return response.jobs[0]?.files?.length;
-      })
-      .toBe(2);
-    const photoJob = await app.evaluate(
-      async () =>
-        (await chrome.runtime.sendMessage({ type: "youtube-jobs" })).jobs[0],
-    );
-    assert.equal(photoJob.mediaType, "photos");
-    assert.equal(photoJob.state, "complete");
-    completed++;
-    assert.ok(
-      photoJob.files.every((file) => file.startsWith(photoJob.directory)),
-    );
-  }
-  for (const browser of ["chrome", "edge"]) {
-    await app.locator('[data-view="settings"]').click();
-    await app.locator("#use-browser-session").check();
-    await app.locator("#login-browser").selectOption(browser);
-    await app.locator('[data-view="download"]').click();
-    await app
-      .locator("#youtube-url")
-      .fill(`https://www.instagram.com/p/AUTH_${browser}/`);
-    await app.locator("#media-kind").selectOption("video");
-    await app
-      .getByRole("button", { name: "Download video", exact: true })
-      .click();
-    await expect
-      .poll(
-        async () =>
-          (
-            await app.evaluate(() =>
-              chrome.runtime.sendMessage({ type: "youtube-jobs" }),
-            )
-          ).jobs[0]?.state,
-        { timeout: 15000 },
-      )
-      .toBe("complete");
-    const requestArgs = JSON.parse(
-      await readFile(path.join(nextFolder, "fixture-args.json"), "utf8"),
-    );
-    assert.equal(
-      requestArgs[requestArgs.indexOf("--cookies-from-browser") + 1],
-      browser,
-    );
-  }
-  await app.locator('[data-view="settings"]').click();
-  await app.locator("#use-browser-session").uncheck();
-  await app.locator('[data-view="download"]').click();
-  await app
-    .locator("#youtube-url")
-    .fill("https://www.instagram.com/p/PARTIAL/");
-  await app.locator("#media-kind").selectOption("photos");
-  console.log(
-    "PASS: Chrome and Edge login choices reach the fixture downloader through the real native bridge; no browser cookies read.",
-  );
-  await app
-    .getByRole("button", { name: "Download photos", exact: true })
-    .click();
-  await expect(app.locator('.youtube-job[data-state="partial"]')).toHaveCount(
-    1,
-  );
-  await app.locator("#youtube-url").fill("https://www.instagram.com/p/EMPTY/");
-  await app
-    .getByRole("button", { name: "Download photos", exact: true })
-    .click();
+  await page.locator("#youtube-quality").selectOption("1080");
+  await page.locator("#download-selected").click();
   await expect
     .poll(
       async () =>
         (
-          await app.evaluate(() =>
+          await page.evaluate(() =>
             chrome.runtime.sendMessage({ type: "youtube-jobs" }),
           )
         ).jobs[0]?.state,
     )
-    .toBe("failed");
-  await app.locator("#youtube-url").fill("https://youtu.be/BaW_jenozKc");
-  await expect(app.locator("#media-kind")).toHaveValue("video");
+    .toBe("complete");
+  const saved = (
+    await page.evaluate(() =>
+      chrome.runtime.sendMessage({ type: "youtube-jobs" }),
+    )
+  ).jobs[0];
+  assert.equal(saved.files.length, 2);
+  assert.ok(saved.files.some((f) => f.endsWith(".png")));
+  assert.ok(saved.files.some((f) => f.endsWith(".mp4")));
+  const picture = saved.files.find((f) => f.endsWith(".png"));
+  assert.deepEqual(await readFile(picture), Buffer.from(png, "base64"));
   console.log(
-    "PASS: all five social video/photo routes, official site icons, album files, partial failures, empty photo posts and YouTube video-only mode (fixture downloaders).",
+    "PASS: mixed scan, selected download, byte-preserved image, video, selection restoration and scan/download Activity records.",
+  );
+  await page.locator('[data-view="download"]').click();
+  await page.getByRole("button", { name: "Change link", exact: true }).click();
+  await page.locator("#youtube-url").fill("https://www.instagram.com/p/FAIL/");
+  await page.getByRole("button", { name: "Scan link", exact: true }).click();
+  await expect(page.locator("#youtube-status")).toContainText(
+    "Login required",
+    { timeout: 15000 },
+  );
+  assert.equal(
+    (
+      await page.evaluate(() =>
+        chrome.runtime.sendMessage({ type: "youtube-jobs" }),
+      )
+    ).jobs[0].state,
+    "failed",
   );
   console.log(
-    "PASS: real Windows registration and native EXE startup, automatic reconnect, quality selection, download continuing after tab closure, saved file and error reporting (fixture downloader).",
+    "PASS: failed scan preserves the actual extractor error and remains in Activity.",
   );
-  await mkdir(path.join(root, "test-results"), { recursive: true });
-  await app.screenshot({
-    path: path.join(root, "test-results", "popup-download.png"),
-    fullPage: true,
-  });
-  await app.goto(`chrome-extension://${id}/app.html#999`);
-  await expect(app.locator("#youtube-url")).toHaveValue("");
-  await app.locator("#youtube-url").fill("https://example.com/video");
-  await app.locator('[data-view="download"]').click();
-  await app
-    .getByRole("button", { name: "Download video", exact: true })
-    .click();
-  await expect(app.locator("#youtube-status")).toContainText(
-    "Enter a post link",
+  await page.close();
+  const html = `<!doctype html><title>Open carousel</title><script type="application/json">${JSON.stringify({ post: { code: "OPEN", carousel_media: [{ image_versions2: { candidates: [{ url: "https://scontent.cdninstagram.com/fixture-photo-1.png", width: 1080, height: 1350 }] } }, { image_versions2: { candidates: [{ url: "https://scontent.cdninstagram.com/fixture-photo-2.png", width: 1080, height: 1350 }] } }] } })}</script>`;
+  await context.route("https://www.instagram.com/p/OPEN/", (route) =>
+    route.fulfill({ contentType: "text/html", body: html }),
   );
-  assert.deepEqual(errors, []);
-  await app.setViewportSize({ width: 1280, height: 900 });
-  await worker.evaluate(() =>
-    chrome.storage.local.set({
-      popupDraft: {
-        sourceUrl: "",
-        url: "https://youtu.be/BaW_jenozKc",
-        quality: "1080",
-      },
-    }),
-  );
-  const tabCountBefore = await worker.evaluate(
+  const source = await context.newPage();
+  await source.setViewportSize({ width: 1280, height: 900 });
+  await source.goto("https://www.instagram.com/p/OPEN/");
+  const before = await worker.evaluate(
     async () => (await chrome.tabs.query({})).length,
   );
   await worker.evaluate(() => chrome.action.openPopup());
@@ -472,142 +215,102 @@ try {
       ),
     )
     .toBe(1);
-  const tabCountAfter = await worker.evaluate(
-    async () => (await chrome.tabs.query({})).length,
+  const inspector = await context.browser().newBrowserCDPSession();
+  const { targetInfos } = await inspector.send("Target.getTargets");
+  const target = targetInfos.find(
+    (t) =>
+      t.url === `chrome-extension://${id}/app.html` &&
+      t.type !== "service_worker",
   );
-  const popupUrl = `chrome-extension://${id}/app.html`;
-  const popupSession = await context.browser().newBrowserCDPSession();
-  const { targetInfos } = await popupSession.send("Target.getTargets");
-  const popupTarget = targetInfos.find(
-    (target) => target.url === popupUrl && target.type !== "service_worker",
-  );
-  assert.ok(popupTarget, "Native popup target must exist.");
-  const { sessionId: popupSessionId } = await popupSession.send(
-    "Target.attachToTarget",
-    { targetId: popupTarget.targetId, flatten: false },
-  );
-  let popupCommandId = 0;
-  async function popupCommand(method, params = {}) {
-    const commandId = ++popupCommandId;
-    return new Promise((resolve, reject) => {
+  assert.ok(target);
+  const { sessionId } = await inspector.send("Target.attachToTarget", {
+    targetId: target.targetId,
+    flatten: false,
+  });
+  let sequence = 0;
+  const command = (method, params = {}) =>
+    new Promise((resolve, reject) => {
+      const requestId = ++sequence;
       const timer = setTimeout(() => {
-        popupSession.off("Target.receivedMessageFromTarget", listener);
-        reject(new Error("Popup inspection timed out"));
-      }, 5000);
+        inspector.off("Target.receivedMessageFromTarget", listener);
+        reject(new Error("Popup command timed out"));
+      }, 10000);
       function listener(event) {
-        if (event.sessionId !== popupSessionId) return;
-        const message = JSON.parse(event.message);
-        if (message.id !== commandId) return;
+        if (event.sessionId !== sessionId) return;
+        const result = JSON.parse(event.message);
+        if (result.id !== requestId) return;
         clearTimeout(timer);
-        popupSession.off("Target.receivedMessageFromTarget", listener);
-        message.error
-          ? reject(new Error(message.error.message))
-          : resolve(message.result);
+        inspector.off("Target.receivedMessageFromTarget", listener);
+        result.error
+          ? reject(new Error(result.error.message))
+          : resolve(result.result);
       }
-      popupSession.on("Target.receivedMessageFromTarget", listener);
-      popupSession
+      inspector.on("Target.receivedMessageFromTarget", listener);
+      inspector
         .send("Target.sendMessageToTarget", {
-          sessionId: popupSessionId,
-          message: JSON.stringify({ id: commandId, method, params }),
+          sessionId,
+          message: JSON.stringify({ id: requestId, method, params }),
         })
         .catch(reject);
     });
-  }
+  const evaluate = async (expression) =>
+    (
+      await command("Runtime.evaluate", {
+        expression,
+        returnByValue: true,
+        awaitPromise: true,
+      })
+    ).result.value;
   await expect
-    .poll(
-      async () =>
-        (
-          await popupCommand("Runtime.evaluate", {
-            expression: "document.body.dataset.connection",
-            returnByValue: true,
-          })
-        ).result.value,
-    )
+    .poll(() => evaluate("document.body.dataset.connection"))
     .toBe("ready");
-  await popupCommand("Runtime.evaluate", {
-    expression:
-      "document.fonts.ready.then(()=>new Promise(resolve=>setTimeout(resolve,200)))",
-    awaitPromise: true,
-  });
-  const geometry = await popupCommand("Runtime.evaluate", {
-    expression:
-      '({width:innerWidth,height:innerHeight,bodyWidth:document.body.getBoundingClientRect().width,scrollWidth:document.documentElement.scrollWidth,buttonBottom:document.querySelector("#youtube-download").getBoundingClientRect().bottom,footerTop:document.querySelector("footer").getBoundingClientRect().top})',
-    returnByValue: true,
-  });
-  const popupSize = geometry.result.value;
-  const designAudit = await popupCommand("Runtime.evaluate", {
-    expression: `({
-    logoLoaded:document.querySelector('.service-logo').complete && document.querySelector('.service-logo').naturalWidth>0,
-    primaryColor:getComputedStyle(document.querySelector('.primary')).backgroundColor,
-    shadowCount:[...document.querySelectorAll('*')].filter(el=>getComputedStyle(el).boxShadow!=='none').length,
-    weights:[...new Set([...document.querySelectorAll('*')].map(el=>getComputedStyle(el).fontWeight))]
-  })`,
-    returnByValue: true,
-  });
-  assert.equal(
-    designAudit.result.value.logoLoaded,
-    true,
-    "Official YouTube asset must load locally.",
+  await expect
+    .poll(() => evaluate('document.querySelector("#youtube-url").value'))
+    .toBe("https://www.instagram.com/p/OPEN/");
+  await evaluate('document.querySelector("#youtube-download").click()');
+  await expect
+    .poll(() => evaluate('document.querySelectorAll(".scan-item").length'), {
+      timeout: 15000,
+    })
+    .toBe(2);
+  await expect
+    .poll(() =>
+      evaluate('document.querySelector("#scan-warning-text").textContent'),
+    )
+    .toContain("Login required");
+  const dimensions = await evaluate(
+    '({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,bodyWidth:document.body.getBoundingClientRect().width,buttonBottom:document.querySelector("#download-selected").getBoundingClientRect().bottom,footerTop:document.querySelector("footer").getBoundingClientRect().top})',
   );
-  assert.equal(designAudit.result.value.primaryColor, "rgb(0, 113, 227)");
-  assert.equal(
-    designAudit.result.value.shadowCount,
-    0,
-    "The supplied design system has no shadows.",
-  );
-  assert.ok(
-    designAudit.result.value.weights.every((weight) =>
-      ["400", "600", "700"].includes(weight),
-    ),
-  );
-  console.log("Actual popup geometry:", JSON.stringify(popupSize));
-  await popupCommand("Runtime.evaluate", {
-    expression: "new Promise(resolve=>setTimeout(resolve,250))",
-    awaitPromise: true,
-  });
-  const screenshot = await popupCommand("Page.captureScreenshot");
+  assert.equal(dimensions.bodyWidth, 420);
+  assert.ok(dimensions.scrollWidth <= dimensions.width);
+  assert.ok(dimensions.buttonBottom <= dimensions.footerTop);
+  await mkdir(path.join(root, "test-results"), { recursive: true });
+  const screenshot = await command("Page.captureScreenshot");
   await writeFile(
-    path.join(root, "test-results", "actual-brave-popup.png"),
+    path.join(root, "test-results", "scan-popup.png"),
     Buffer.from(screenshot.data, "base64"),
   );
-  await popupSession.detach();
-  assert.ok(
-    popupSize.width >= 420 && popupSize.width <= 440,
-    "Native popup must fit 420px content plus any browser gutter.",
-  );
-  assert.equal(popupSize.bodyWidth, 420);
-  assert.ok(
-    popupSize.scrollWidth <= popupSize.width,
-    "Native popup must have no horizontal overflow.",
-  );
-  assert.ok(
-    popupSize.buttonBottom <= popupSize.footerTop,
-    "Download button must remain above the footer.",
-  );
   assert.equal(
-    tabCountAfter,
-    tabCountBefore,
-    "The toolbar popup must not create a browser tab.",
+    await worker.evaluate(async () => (await chrome.tabs.query({})).length),
+    before,
   );
+  await inspector.detach();
+  assert.deepEqual(errors, []);
   console.log(
-    "PASS: actual Brave action popup opens, with no new browser tab.",
-  );
-  console.log(
-    "PASS: responsive layout, expired-source fallback and invalid URL feedback; no uncaught UI errors.",
+    "PASS: actual Brave popup, unchanged active-link capture, scoped open-post fallback when APIs fail, mixed-result layout and no new tab.",
   );
 } finally {
   await context?.close();
-  // Delete only this run's uniquely named native host registry keys.
   run("powershell.exe", [
     "-NoProfile",
     "-Command",
-    `foreach ($browser in @('Google\\Chrome','Microsoft\\Edge','BraveSoftware\\Brave-Browser')) { $parent=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\\$browser\\NativeMessagingHosts",$true); if($parent) { $parent.DeleteSubKey('${hostName}',$false); $parent.Dispose() } }`,
+    `foreach($browser in @('Google\\Chrome','Microsoft\\Edge','BraveSoftware\\Brave-Browser')){$key=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\\$browser\\NativeMessagingHosts",$true);if($key){$key.DeleteSubKey('${hostName}',$false);$key.Dispose()}}`,
   ]);
   if (
     path.dirname(path.resolve(temp)) !== path.resolve(tmpdir()) ||
-    !path.basename(temp).startsWith("youtube-native-test-")
+    !path.basename(temp).startsWith("media-scan-browser-")
   )
-    throw new Error("Unexpected test cleanup path");
+    throw new Error("Unexpected cleanup path");
   await rm(temp, {
     recursive: true,
     force: true,

@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url";
 import { normalizePost, PLATFORMS, QUALITIES } from "../extension/platforms.js";
 import { photoArgs, listPhotos } from "./photos.mjs";
 import { cookieArgs, LOGIN_BROWSERS } from "./browser-session.mjs";
+import { createScanManager } from "./scan-manager.mjs";
+import { extractorError } from "./scan-parser.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const runFile = promisify(execFile);
@@ -85,6 +87,14 @@ export function createHelper({
 }) {
   const jobs = new Map();
   const active = new Set();
+  const scans = createScanManager({
+    jobs,
+    active,
+    executable,
+    galleryExecutable,
+    ffmpegDirectory,
+    resolveOutputDirectory,
+  });
   function publicJob(job) {
     return {
       id: job.id,
@@ -102,6 +112,10 @@ export function createHelper({
       mediaType: job.mediaType,
       files: job.files,
       directory: job.directory,
+      kind: job.kind,
+      scanId: job.scanId,
+      warnings: job.warnings,
+      assetCount: job.assets?.length,
     };
   }
   const server = createServer(async (req, res) => {
@@ -146,23 +160,35 @@ export function createHelper({
       if (req.method === "GET" && req.url === "/v1/info")
         return send(200, {
           name: "Media Extractor Helper",
-          version: "6.1.0",
+          version: "8.0.0",
           loginBrowsers: LOGIN_BROWSERS,
           platforms: Object.keys(PLATFORMS),
           photosAvailable: !!galleryExecutable,
+          scanFirst: true,
           outputDirectory: await resolveOutputDirectory(),
         });
       if (req.method === "GET" && req.url === "/v1/jobs")
         return send(200, { jobs: [...jobs.values()].reverse().map(publicJob) });
-      if (req.method !== "POST" || req.url !== "/v1/jobs")
+      if (req.method === "GET" && req.url.startsWith("/v1/scans/"))
+        return send(200, {
+          scan: scans.result(decodeURIComponent(req.url.slice(10))),
+        });
+      if (
+        req.method !== "POST" ||
+        !["/v1/jobs", "/v1/scans", "/v1/selections"].includes(req.url)
+      )
         return send(404, { error: "Not found." });
       let body = "";
       for await (const chunk of req) {
         body += chunk;
-        if (body.length > 4096)
+        if (body.length > 250000)
           return send(413, { error: "Request too large." });
       }
       const data = JSON.parse(body);
+      if (req.url === "/v1/scans")
+        return send(202, { job: publicJob(scans.start(data)) });
+      if (req.url === "/v1/selections")
+        return send(202, { job: publicJob(scans.download(data)) });
       const post = normalizePost(data.url);
       const url = post?.url;
       if (!post)
@@ -363,6 +389,7 @@ export function createHelper({
           .split(/\r?\n/)
           .filter((line) => line.startsWith("ERROR:"));
         job.error =
+          extractorError(errorTail) ||
           errors.slice(-2).join(" ").slice(0, 1400) ||
           `No ${mediaType === "photos" ? "photos" : "videos"} were saved. This post may have no matching media, need login, or be unavailable.`;
       });

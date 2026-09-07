@@ -1,6 +1,6 @@
 # Media Extractor — main design rules
 
-This is the visual source of truth for the extension, adapted from the user's supplied Apple-style rules. All future tools share this shell. The implemented tools are YouTube, Instagram, X, Reddit, TikTok and Facebook. Do not imply support for unimplemented platforms.
+This is the visual source of truth for the extension, adapted from the user's supplied Apple-style rules. All future tools share this shell. The implemented tools are YouTube, Instagram, X, Reddit, TikTok, Facebook, Pinterest and Threads. Do not imply support for unimplemented platforms.
 
 ## Foundation
 

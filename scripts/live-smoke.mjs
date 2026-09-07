@@ -30,10 +30,12 @@ try {
     { timeout: 20000 },
   );
   await page.locator("#youtube-url").fill(url);
+  await page.getByRole("button", { name: "Scan link", exact: true }).click();
+  await expect(page.locator(".scan-item").first()).toBeVisible({
+    timeout: 120000,
+  });
   await page.locator("#youtube-quality").selectOption("720");
-  await page
-    .getByRole("button", { name: "Download video", exact: true })
-    .click();
+  await page.locator("#download-selected").click();
   await expect
     .poll(
       async () => {

@@ -7,6 +7,8 @@ export const PLATFORMS = {
   reddit: "Reddit",
   tiktok: "TikTok",
   facebook: "Facebook",
+  pinterest: "Pinterest",
+  threads: "Threads",
 };
 export const QUALITIES = ["720", "1080", "1440", "2160", "best"];
 export const PLATFORM_ASSETS = {
@@ -16,6 +18,8 @@ export const PLATFORM_ASSETS = {
   reddit: "assets/reddit.png",
   tiktok: "assets/tiktok.png",
   facebook: "assets/facebook.ico",
+  pinterest: "assets/pinterest.png",
+  threads: "assets/threads.ico",
 };
 export function normalizePost(raw) {
   const youtube = normalizeYouTubeUrl(raw);
@@ -32,6 +36,28 @@ export function normalizePost(raw) {
     const host = input.hostname.toLowerCase();
     const pathname = input.pathname.replace(/\/+$/, "");
     let match;
+    if (host === "pin.it" && /^\/[a-z0-9]+$/i.test(pathname))
+      return { platform: "pinterest", url: `https://pin.it${pathname}` };
+    if (
+      [
+        "threads.net",
+        "www.threads.net",
+        "threads.com",
+        "www.threads.com",
+      ].includes(host) &&
+      /^\/@[\w.]+\/post\/[\w-]+$/.test(pathname)
+    )
+      return { platform: "threads", url: `https://www.threads.com${pathname}` };
+    if (
+      /^(?:www\.|[a-z]{2}\.)?pinterest\.(?:com|co\.uk|com\.au|de|fr|ca|jp|es|it|pt|ch|at|se|dk|nl|co\.kr|co\.in|com\.mx|com\.br|id)$/.test(
+        host,
+      ) &&
+      (match = pathname.match(/^\/pin\/(\d+)(?:\/sent)?$/))
+    )
+      return {
+        platform: "pinterest",
+        url: `https://www.pinterest.com/pin/${match[1]}/`,
+      };
     if (
       ["instagram.com", "www.instagram.com"].includes(host) &&
       (match = pathname.match(/^\/(p|reel|reels|tv)\/([\w-]+)$/))
@@ -65,6 +91,11 @@ export function normalizePost(raw) {
         "m.reddit.com",
       ].includes(host)
     ) {
+      if (/^\/r\/[^/]+\/s\/[a-z0-9]+$/i.test(pathname))
+        return {
+          platform: "reddit",
+          url: `https://www.reddit.com${pathname}/`,
+        };
       match =
         pathname.match(/^\/(?:r\/[^/]+\/)?comments\/([a-z0-9]+)(?:\/.*)?$/i) ||
         pathname.match(/^\/gallery\/([a-z0-9]+)$/i);

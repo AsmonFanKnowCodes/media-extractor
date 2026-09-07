@@ -14,7 +14,7 @@ test("native framing handles split headers, split UTF8 and batched messages", ()
   assert.deepEqual(received, [first, { id: 2, method: "jobs" }]);
 });
 test("native framing rejects oversized, empty and malformed requests", () => {
-  for (const size of [0, 65537]) {
+  for (const size of [0, 262145]) {
     const header = Buffer.alloc(4);
     header.writeUInt32LE(size);
     assert.throws(() => createDecoder(() => {})(header));

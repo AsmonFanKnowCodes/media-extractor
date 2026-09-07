@@ -1,4 +1,5 @@
 import { normalizePost } from "./platforms.js";
+import { collectPostMedia } from "./collect-post.js";
 
 const HOST_NAME = "com.personal.youtube_downloader";
 let nativePort;
@@ -64,6 +65,50 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   )
     return;
   (async () => {
+    if (message.type === "youtube-scan") {
+      const post = normalizePost(message.url);
+      if (!post) throw new Error("Enter a supported individual post link.");
+      let pageMedia = { items: [] };
+      try {
+        const [tab] = await chrome.tabs.query({
+          active: true,
+          lastFocusedWindow: true,
+        });
+        if (
+          post.platform !== "youtube" &&
+          normalizePost(tab?.url || "")?.url === post.url
+        ) {
+          const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: collectPostMedia,
+            args: [post],
+          });
+          pageMedia = results[0]?.result || pageMedia;
+          while (JSON.stringify(pageMedia).length > 160000) {
+            pageMedia.items.pop();
+            pageMedia.truncated = true;
+          }
+        }
+      } catch {
+        /* Remote extractors can still inspect a pasted link. */
+      }
+      return nativeRequest("scan", {
+        url: post.url,
+        pageMedia,
+        useBrowserSession: message.useBrowserSession === true,
+        loginBrowser: message.loginBrowser,
+      });
+    }
+    if (message.type === "youtube-scan-result")
+      return nativeRequest("scanResult", { scanId: message.scanId });
+    if (message.type === "youtube-download-selected")
+      return nativeRequest("selection", {
+        scanId: message.scanId,
+        assetIds: message.assetIds,
+        quality: message.quality,
+        useBrowserSession: message.useBrowserSession === true,
+        loginBrowser: message.loginBrowser,
+      });
     if (message.type === "youtube-info") return nativeRequest("info");
     if (message.type === "youtube-jobs") return nativeRequest("jobs");
     if (message.type === "youtube-choose-folder")

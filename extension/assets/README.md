@@ -7,6 +7,9 @@ Assets load locally. The extension does not request fonts or branding from a thi
 
 Additional official site icons, downloaded unchanged from the sites' icon endpoints:
 
+- Pinterest: `https://s.pinimg.com/webapp/favicon_48x48-7470a30d.png`, linked by pinterest.com.
+- Threads: `https://static.cdninstagram.com/rsrc.php/yP/r/0Qa-AOmHi0c.ico`, linked by threads.com.
+
 - Instagram: `https://static.cdninstagram.com/rsrc.php/yr/r/rzWiSjZRxk5.webp`, linked by instagram.com.
 - X: `https://x.com/favicon.ico`.
 - Reddit: `https://www.redditstatic.com/shreddit/assets/favicon/64x64.png`, linked by reddit.com.

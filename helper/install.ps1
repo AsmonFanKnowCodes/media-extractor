@@ -43,7 +43,7 @@ if(-not $toolsConfig) {
 }
 Write-Host 'PROGRESS|65|Installing the app and browser extension...'
 if([IO.Path]::GetFullPath($nodePath) -ne (Join-Path $Destination 'node.exe')) {Copy-Item -LiteralPath $nodePath -Destination (Join-Path $Destination 'node.exe') -Force}
-foreach($name in @('server.mjs','native.mjs','native-protocol.mjs','settings.mjs','photos.mjs','browser-session.mjs')) {Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force}
+foreach($name in @('server.mjs','native.mjs','native-protocol.mjs','settings.mjs','photos.mjs','browser-session.mjs','scan-manager.mjs','scan-parser.mjs','media-policy.mjs')) {Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force}
 # A stable installed extension folder means the downloaded ZIP can be removed.
 Get-ChildItem -LiteralPath (Join-Path $projectRoot 'extension') -Force | ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination $extensionDirectory -Recurse -Force}
 Copy-Item -LiteralPath $toolsConfig.executable -Destination (Join-Path $binDirectory 'yt-dlp.exe') -Force

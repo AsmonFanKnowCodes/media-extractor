@@ -42,7 +42,7 @@
       <section
         id="download-view"
         class="view"
-        aria-label="Download a YouTube video"
+        aria-label="Scan and download post media"
       >
         <div id="setup-banner" class="setup-banner" hidden>
           <div>
@@ -51,60 +51,61 @@
           </div>
           <button id="setup-shortcut" type="button">Set up</button>
         </div>
-        <div class="source-context">
-          <img
-            class="service-logo"
-            src="assets/youtube-logo.png"
-            alt="YouTube"
-            width="112"
-            height="38"
-          />
-          <div>
-            <strong id="source-title">Download a YouTube video</strong>
-            <p id="source-caption">Paste a link below to get started.</p>
-          </div>
-        </div>
-        <form id="youtube-form">
-          <label for="youtube-url">Post or video link</label
-          ><input
-            id="youtube-url"
-            type="url"
-            required
-            placeholder="Paste a supported post link…"
-            autocomplete="off"
-          />
-          <div class="quality-row">
-            <div class="media-kind">
-              <label for="media-kind">Download</label
-              ><select id="media-kind">
-                <option value="video">Video</option>
-                <option value="photos">Photos</option>
-              </select>
-            </div>
+        <div id="scan-input-panel">
+          <div class="source-context">
+            <img
+              class="service-logo"
+              src="assets/youtube-logo.png"
+              alt="YouTube"
+              width="112"
+              height="38"
+            />
             <div>
-              <label for="youtube-quality">Quality</label
-              ><select id="youtube-quality">
-                <option value="1080">Up to 1080p</option>
-                <option value="720">Up to 720p</option>
-                <option value="1440">Up to 1440p</option>
-                <option value="2160">Up to 4K</option>
-                <option value="best">Best available</option>
-              </select>
+              <strong id="source-title">Download a YouTube video</strong>
+              <p id="source-caption">Paste a link below to get started.</p>
             </div>
           </div>
-          <p class="quality-note">Original quality. Never upscaled.</p>
-          <button id="folder-shortcut" class="folder-shortcut" type="button">
-            <svg aria-hidden="true" viewBox="0 0 24 24">
-              <path d="M3 7h7l2 2h9v11H3zM3 7V4h7l2 3" /></svg
-            ><span
-              ><small>Save location</small
-              ><span id="folder-preview">Checking save folder…</span></span
-            ><span class="arrow" aria-hidden="true">›</span>
-          </button>
-          <button id="youtube-download" class="primary" type="submit" disabled>
-            Download video <span aria-hidden="true">↓</span>
-          </button>
-        </form>
+          <form id="youtube-form">
+            <label for="youtube-url">Post or video link</label
+            ><input
+              id="youtube-url"
+              type="url"
+              required
+              placeholder="Paste a supported post link…"
+              autocomplete="off"
+            />
+            <button id="folder-shortcut" class="folder-shortcut" type="button">
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M3 7h7l2 2h9v11H3zM3 7V4h7l2 3" /></svg
+              ><span
+                ><small>Save location</small
+                ><span id="folder-preview">Checking save folder…</span></span
+              ><span class="arrow" aria-hidden="true">›</span>
+            </button>
+            <button
+              id="youtube-download"
+              class="primary"
+              type="submit"
+              disabled
+            >
+              Scan link
+            </button>
+          </form>
+        </div>
+        <section id="scan-results" hidden aria-label="Scanned media">
+          <div class="scan-heading">
+            <h2 id="scan-summary">Media found</h2>
+            <button id="new-scan" type="button">Change link</button>
+          </div>
+          <details id="scan-warnings" hidden>
+            <summary>Scan notes</summary>
+            <p id="scan-warning-text"></p>
+          </details>
+          <label class="scan-select-all"
+            ><input id="scan-select-all" type="checkbox" />Select all</label
+          >
+          <div id="scan-items"></div>
+        </section>
         <p id="youtube-status" class="status" role="status" aria-live="polite">
           Starting the downloader…
         </p>
@@ -188,14 +189,16 @@
           <p id="login-status" class="fine-print" role="status"></p>
           <strong>About quality</strong>
           <p>
-            Video limits: 720p, 1080p, 1440p, or 4K. Best available has no cap.
-            Photos save at the resolution provided by the site.
+            Video limits use the short edge, so portrait 1080 × 1920 fits 1080p.
+            Instagram prefers a compatible H.264 source when available. Photos
+            and audio are saved without automatic enhancement or volume changes.
           </p>
           <strong>Supported posts</strong>
           <p>
-            YouTube, Instagram, X, Reddit, TikTok and Facebook. Choose Video or
-            Photos. Photos saves all images found in that post. Login-restricted
-            content may not work.
+            YouTube, Instagram, X, Reddit, TikTok, Facebook, Pinterest and
+            Threads. Scan the link, then select photos, videos, or both. An open
+            matching post can supply fallback media when remote extraction is
+            blocked. Hidden or unloaded slides may still be missing.
           </p>
         </div>
       </section>
@@ -252,9 +255,10 @@
           <li>
             <h3>Save a post</h3>
             <p>
-              Open the popup, wait for Ready, paste a supported link, and choose
-              Video or Photos. Set a save location in Settings and follow
-              progress in Activity.
+              Open the popup, wait for Ready, paste a supported link, and click
+              Scan link. Select the media you want, choose video quality, and
+              click Download selected. Scans and downloads both appear in
+              Activity.
             </p>
           </li>
         </ol>
@@ -335,6 +339,21 @@
         </p>
       </section>
     </main>
+    <div id="selection-controls" class="selection-controls" hidden>
+      <div>
+        <label for="youtube-quality">Video quality</label
+        ><select id="youtube-quality">
+          <option value="best">Best available</option>
+          <option value="1080">Up to 1080p</option>
+          <option value="720">Up to 720p</option>
+          <option value="1440">Up to 1440p</option>
+          <option value="2160">Up to 4K</option>
+        </select>
+      </div>
+      <button id="download-selected" class="primary" type="button" disabled>
+        Download selected
+      </button>
+    </div>
     <footer>
       <span class="footer-dot" aria-hidden="true"></span>Downloads continue when
       this popup closes.<span class="footer-sub">Keep your browser open.</span>

@@ -638,6 +638,107 @@ footer {
 [hidden] {
   display: none !important;
 }
+.scan-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.scan-heading h2 {
+  font-size: 21px;
+  margin: 0;
+}
+.scan-heading button {
+  font-size: 12px;
+  padding: 8px 14px;
+}
+.scan-select-all {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 14px;
+}
+.scan-select-all input,
+.scan-item input {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+.scan-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 12px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-card);
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.scan-item img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.scan-item > span {
+  min-width: 0;
+}
+.scan-item strong {
+  font-size: 14px;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+}
+.scan-item small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.selection-controls {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 12px 21px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.selection-controls > div {
+  width: 145px;
+  flex-shrink: 0;
+}
+.selection-controls label {
+  font-size: 12px;
+}
+.selection-controls select {
+  font-size: 14px;
+}
+.selection-controls .primary {
+  font-size: 14px;
+  flex: 1;
+  padding: 8px 12px;
+}
+#scan-warning-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+#scan-warnings {
+  margin: 0 0 12px;
+}
+#scan-warnings summary {
+  font-size: 12px;
+}
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Media Extractor",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "Download videos and photo posts from YouTube, Instagram, X, Reddit, TikTok and Facebook.",
   "minimum_chrome_version": "109",
-  "permissions": ["activeTab", "storage", "nativeMessaging"],
+  "permissions": ["activeTab", "storage", "nativeMessaging", "scripting"],
   "action": {
     "default_title": "Open Media Extractor",
     "default_popup": "app.html"

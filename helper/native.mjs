@@ -67,20 +67,27 @@ const decode = createDecoder(async (message) => {
         choosingFolder = false;
       }
     }
-    const route = { info: "info", jobs: "jobs", download: "jobs" }[
-      message.method
-    ];
+    const route = {
+      info: "info",
+      jobs: "jobs",
+      download: "jobs",
+      scan: "scans",
+      selection: "selections",
+      scanResult: `scans/${encodeURIComponent(message.params?.scanId || "")}`,
+    }[message.method];
     if (!route) throw new Error("Unknown downloader command.");
-    const body =
-      message.method === "download"
-        ? {
-            url: message.params?.url,
-            quality: message.params?.quality,
-            mediaType: message.params?.mediaType,
-            useBrowserSession: message.params?.useBrowserSession,
-            loginBrowser: message.params?.loginBrowser,
-          }
-        : null;
+    const body = ["download", "scan", "selection"].includes(message.method)
+      ? {
+          url: message.params?.url,
+          quality: message.params?.quality,
+          mediaType: message.params?.mediaType,
+          useBrowserSession: message.params?.useBrowserSession,
+          loginBrowser: message.params?.loginBrowser,
+          pageMedia: message.params?.pageMedia,
+          scanId: message.params?.scanId,
+          assetIds: message.params?.assetIds,
+        }
+      : null;
     const response = await fetch(base + route, {
       method: body ? "POST" : "GET",
       headers: {

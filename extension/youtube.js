@@ -12,7 +12,11 @@ let connected = false,
 let folderBusy = false;
 let sourceUrl = "";
 let sourceTitle = "";
-let lastVideoQuality = "1080";
+let activeScanId = "",
+  scanData = null,
+  scanBusy = false,
+  scanLoading = false;
+const selectedMedia = new Set();
 let availableLoginBrowsers = ["brave"];
 chrome.storage.local
   .get(["useBrowserSession", "loginBrowser"])
@@ -40,7 +44,6 @@ for (const button of document.querySelectorAll("[data-open-help]"))
   button.addEventListener("click", () => switchView("help"));
 function updateSourceLabel() {
   const post = normalizePost($("#youtube-url").value);
-  const matches = sourceUrl && post?.url === sourceUrl;
   const platform = post?.platform;
   const logo = document.querySelector(".service-logo");
   logo.hidden = !platform;
@@ -50,45 +53,149 @@ function updateSourceLabel() {
     logo.classList.toggle("platform-icon", platform !== "youtube");
   }
   $("#source-title").textContent =
-    matches && sourceTitle
+    sourceUrl === post?.url && sourceTitle
       ? sourceTitle.replace(/ - YouTube$/, "")
       : platform
         ? `${PLATFORMS[platform]} post`
-        : "Paste a post link";
+        : "Scan a post";
   $("#source-caption").textContent = platform
-    ? "Choose Video or Photos below."
-    : "YouTube, Instagram, X, Reddit, TikTok, Facebook";
-  const photosOption = $('#media-kind option[value="photos"]');
-  photosOption.disabled = platform === "youtube";
-  if (platform === "youtube") {
-    if ($("#media-kind").value === "photos")
-      $("#youtube-quality").value = lastVideoQuality;
-    $("#media-kind").value = "video";
-  }
-  updateMediaKind();
+    ? "Find photos and videos together."
+    : "Paste a post link to see its media.";
 }
-function updateMediaKind() {
-  const photos = $("#media-kind").value === "photos";
-  $("#youtube-quality").disabled = photos;
-  const bestOption = $('#youtube-quality option[value="best"]');
-  if (photos) {
-    if ($("#youtube-quality").value !== "best")
-      lastVideoQuality = $("#youtube-quality").value;
-    bestOption.textContent = "Original photos";
-    $("#youtube-quality").value = "best";
-  } else {
-    bestOption.textContent = "Best available";
-  }
-  $("#youtube-download").textContent = photos
-    ? "Download photos"
-    : "Download video";
+function syncSelection() {
+  const assets = scanData?.assets || [];
+  $("#download-selected").disabled = !connected || !selectedMedia.size;
+  $("#download-selected").textContent =
+    `Download ${selectedMedia.size || ""} selected`.replace("  ", " ");
+  $("#scan-select-all").checked =
+    assets.length > 0 && selectedMedia.size === assets.length;
+  $("#scan-select-all").indeterminate =
+    selectedMedia.size > 0 && selectedMedia.size < assets.length;
+  $("#youtube-quality").disabled = !assets.some(
+    (asset) => selectedMedia.has(asset.id) && asset.type === "video",
+  );
+  $("#youtube-quality").parentElement.hidden = $("#youtube-quality").disabled;
+  $("#selection-controls").hidden = !scanData || $("#download-view").hidden;
 }
-$("#media-kind").addEventListener("change", () => {
-  if ($("#media-kind").value === "video")
-    $("#youtube-quality").value = lastVideoQuality;
-  updateMediaKind();
-  saveDraft();
+function saveSelection() {
+  if (scanData)
+    chrome.storage.session.set({
+      scanSelection: { id: scanData.id, ids: [...selectedMedia] },
+    });
+}
+function clearScan() {
+  activeScanId = "";
+  scanData = null;
+  scanBusy = false;
+  selectedMedia.clear();
+  $("#scan-input-panel").hidden = false;
+  $("#scan-results").hidden = true;
+  $("#selection-controls").hidden = true;
+  $("#youtube-download").disabled = !connected;
+  $("#youtube-download").textContent = "Scan link";
+  chrome.storage.session.remove(["activeScan", "scanSelection"]);
+}
+$("#new-scan").addEventListener("click", () => {
+  clearScan();
+  $("#youtube-url").focus();
 });
+$("#youtube-url").addEventListener("input", clearScan);
+function renderScan(result) {
+  scanData = result;
+  scanBusy = false;
+  $("#scan-input-panel").hidden = true;
+  $("#scan-results").hidden = false;
+  $("#scan-items").replaceChildren();
+  $("#scan-summary").textContent = `${result.assets.length} items found`;
+  $("#scan-warnings").hidden = !result.warnings.length;
+  $("#scan-warning-text").textContent = result.warnings.join("\n\n");
+  for (const asset of result.assets) {
+    const row = document.createElement("label");
+    row.className = "scan-item";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selectedMedia.has(asset.id);
+    checkbox.setAttribute("aria-label", `Select ${asset.title}`);
+    checkbox.addEventListener("change", () => {
+      checkbox.checked
+        ? selectedMedia.add(asset.id)
+        : selectedMedia.delete(asset.id);
+      syncSelection();
+      saveSelection();
+    });
+    row.append(checkbox);
+    if (asset.thumbnail) {
+      const image = document.createElement("img");
+      image.src = asset.thumbnail;
+      image.alt = "";
+      image.loading = "lazy";
+      image.referrerPolicy = "no-referrer";
+      image.onerror = () => image.remove();
+      row.append(image);
+    }
+    const text = document.createElement("span");
+    const name = document.createElement("strong");
+    name.textContent = asset.title;
+    const detail = document.createElement("small");
+    detail.textContent = `${asset.type === "photo" ? "Photo" : "Video"}${asset.width && asset.height ? ` · ${asset.width} × ${asset.height}` : ""} · ${asset.source}`;
+    text.append(name, detail);
+    row.append(text);
+    $("#scan-items").append(row);
+  }
+  $("#youtube-status").textContent = "Select the items you want to save.";
+  syncSelection();
+}
+$("#scan-select-all").addEventListener("change", (event) => {
+  selectedMedia.clear();
+  if (event.target.checked)
+    for (const asset of scanData.assets) selectedMedia.add(asset.id);
+  renderScan(scanData);
+  saveSelection();
+});
+async function refreshScan(jobs) {
+  const job = jobs.find((job) => job.id === activeScanId);
+  if (!job || scanLoading) return;
+  if (job.state === "scanning") {
+    scanBusy = true;
+    $("#youtube-download").disabled = true;
+    $("#youtube-download").textContent = "Scanning…";
+    $("#youtube-status").textContent = job.progress;
+    return;
+  }
+  if (job.state === "failed") {
+    scanBusy = false;
+    $("#youtube-download").disabled = !connected;
+    $("#youtube-download").textContent = "Scan again";
+    $("#youtube-status").textContent = `Scan failed: ${job.error}`;
+    return;
+  }
+  if (job.state === "ready" && scanData?.id !== job.id) {
+    scanLoading = true;
+    try {
+      const { scan } = await request({
+        type: "youtube-scan-result",
+        scanId: job.id,
+      });
+      if (activeScanId !== scan.id) return;
+      selectedMedia.clear();
+      const { scanSelection } =
+        await chrome.storage.session.get("scanSelection");
+      for (const asset of scan.assets)
+        if (
+          scanSelection?.id !== scan.id ||
+          scanSelection.ids.includes(asset.id)
+        )
+          selectedMedia.add(asset.id);
+      renderScan(scan);
+    } catch (error) {
+      $("#youtube-status").textContent = error.message;
+      scanBusy = false;
+      $("#youtube-download").disabled = !connected;
+    } finally {
+      scanLoading = false;
+    }
+  }
+}
 $("#youtube-url").addEventListener("input", updateSourceLabel);
 $("#setup-shortcut").addEventListener("click", () => switchView("settings"));
 function switchView(view) {
@@ -99,6 +206,7 @@ function switchView(view) {
   for (const section of document.querySelectorAll(".view"))
     section.hidden = section.id !== `${view}-view`;
   document.querySelector("main").scrollTop = 0;
+  syncSelection();
 }
 for (const button of document.querySelectorAll("[data-view]"))
   button.addEventListener("click", () => switchView(button.dataset.view));
@@ -109,7 +217,7 @@ function connectionState(ready, error = "") {
   $("#connection-detail").textContent = error;
   document.body.dataset.connection = ready ? "ready" : "error";
   $("#setup-banner").hidden = ready;
-  $("#youtube-download").disabled = !ready;
+  $("#youtube-download").disabled = !ready || scanBusy;
   if (!ready) $("#folder-preview").textContent = "Available after setup";
 }
 function saveDraft() {
@@ -117,7 +225,6 @@ function saveDraft() {
     popupDraft: {
       url: $("#youtube-url").value,
       quality: $("#youtube-quality").value,
-      mediaType: $("#media-kind").value,
       sourceUrl,
     },
   });
@@ -195,7 +302,7 @@ function showJobs(jobs) {
     if (job.width && job.height)
       status.textContent = `${job.width} × ${job.height} pixels · ${status.textContent}`;
     if (job.files?.length > 1) {
-      title.textContent = `${PLATFORMS[job.platform] || "Post"} · ${job.files.length} ${job.mediaType === "photos" ? "photos" : "videos"}`;
+      title.textContent = `${PLATFORMS[job.platform] || "Post"} · ${job.files.length} files`;
       if (job.state === "complete")
         status.textContent = `Saved ${job.files.length} files to ${job.directory || job.outputDirectory}`;
       const details = document.createElement("details");
@@ -212,6 +319,25 @@ function showJobs(jobs) {
       row.append(details);
     }
     if (job.state === "partial") status.textContent = job.error;
+    if (job.kind === "scan") {
+      title.textContent = `Scan · ${PLATFORMS[job.platform] || "Post"}`;
+      if (job.state === "ready") {
+        const show = document.createElement("button");
+        show.textContent = "View results";
+        show.addEventListener("click", () => {
+          activeScanId = job.id;
+          scanData = null;
+          $("#youtube-url").value = job.url;
+          updateSourceLabel();
+          chrome.storage.session.set({
+            activeScan: { id: job.id, url: job.url },
+          });
+          switchView("download");
+          refreshScan(jobs);
+        });
+        row.append(show);
+      }
+    }
     row.dataset.state = job.state;
     row.prepend(title, status);
     fragment.append(row);
@@ -219,6 +345,7 @@ function showJobs(jobs) {
   $("#youtube-jobs").replaceChildren(fragment);
   $("#jobs-empty").hidden = jobs.length > 0;
   $("#job-count").textContent = jobs.length;
+  refreshScan(jobs);
 }
 async function refreshJobs() {
   if (!connected || polling) return;
@@ -240,9 +367,9 @@ async function refreshJobs() {
 }
 async function connect() {
   const info = await request({ type: "youtube-info" });
-  if (!info.platforms)
+  if (!info.scanFirst)
     throw new Error(
-      "Install the latest helper to enable additional platforms and photos.",
+      "Install the latest helper to enable scanning and selected downloads.",
     );
   connected = true;
   availableLoginBrowsers = info.loginBrowsers || ["brave"];
@@ -269,60 +396,86 @@ $("#youtube-retry").addEventListener("click", async () => {
     $("#youtube-retry").disabled = false;
   }
 });
+function sessionOptions(url) {
+  const useSession =
+    $("#use-browser-session").checked &&
+    normalizePost(url)?.platform !== "youtube";
+  const browser = $("#login-browser").value;
+  if (useSession && !availableLoginBrowsers.includes(browser)) {
+    switchView("settings");
+    $("#login-status").textContent =
+      "Choose a supported login browser, or update the helper.";
+    return null;
+  }
+  return { useBrowserSession: useSession, loginBrowser: browser };
+}
 $("#youtube-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const url = normalizePost($("#youtube-url").value.trim())?.url;
-  if (!url) {
+  const post = normalizePost($("#youtube-url").value.trim());
+  if (!post) {
     $("#youtube-status").textContent =
-      "Enter a post link from YouTube, Instagram, X, Reddit, TikTok or Facebook.";
-    $("#youtube-url").focus();
+      "Enter an individual post link from a supported platform.";
     return;
   }
-  $("#youtube-download").disabled = true;
   try {
     if (!connected) await connect();
-    const useSession =
-      $("#use-browser-session").checked &&
-      normalizePost(url).platform !== "youtube";
-    const browser = $("#login-browser").value;
-    if (useSession && !availableLoginBrowsers.includes(browser)) {
-      switchView("settings");
-      $("#login-status").textContent = browser
-        ? "Update the helper to enable this login browser."
-        : "Choose the browser where you are signed in.";
-      $("#login-browser").focus();
-      return;
-    }
-    const result = await request({
-      type: "youtube-download",
-      url,
-      quality: $("#youtube-quality").value,
-      mediaType: $("#media-kind").value,
-      useBrowserSession: $("#use-browser-session").checked,
-      loginBrowser: browser,
-    });
-    if (result.job?.outputDirectory) showFolder(result.job.outputDirectory);
+    const auth = sessionOptions(post.url);
+    if (!auth) return;
+    scanBusy = true;
+    scanData = null;
+    $("#youtube-download").disabled = true;
+    $("#youtube-download").textContent = "Scanning…";
     $("#youtube-status").textContent =
-      "Download started. Check Activity for progress.";
+      "Inspecting photos and videos. You can close this popup while it scans.";
+    const response = await request({
+      type: "youtube-scan",
+      url: post.url,
+      ...auth,
+    });
+    if (normalizePost($("#youtube-url").value)?.url !== post.url) return;
+    activeScanId = response.job.id;
+    await chrome.storage.session.set({
+      activeScan: { id: activeScanId, url: post.url },
+    });
     await refreshJobs();
   } catch (error) {
-    $("#youtube-status").textContent = connected
-      ? error.message
-      : "Downloader unavailable. Open Settings to finish setup.";
-    if (!connected) connectionState(false, error.message);
-    if (!connected) $("#youtube-setup").hidden = false;
-    $("#youtube-setup").open = true;
-  } finally {
+    scanBusy = false;
     $("#youtube-download").disabled = !connected;
+    $("#youtube-download").textContent = "Scan again";
+    $("#youtube-status").textContent = error.message;
+  }
+});
+$("#download-selected").addEventListener("click", async () => {
+  if (!scanData || !selectedMedia.size) return;
+  const auth = sessionOptions(scanData.url);
+  if (!auth) return;
+  $("#download-selected").disabled = true;
+  try {
+    await request({
+      type: "youtube-download-selected",
+      scanId: scanData.id,
+      assetIds: [...selectedMedia],
+      quality: $("#youtube-quality").value,
+      ...auth,
+    });
+    $("#youtube-status").textContent =
+      "Download started. See Activity for progress.";
+    await refreshJobs();
+    switchView("activity");
+  } catch (error) {
+    $("#youtube-status").textContent = error.message;
+  } finally {
+    syncSelection();
   }
 });
 async function useSource() {
   const sourceHash = location.hash;
   const tabId = sourceHash ? Number(sourceHash.slice(1)) : undefined;
   try {
-    const [source, preferences] = await Promise.all([
+    const [source, preferences, sessionState] = await Promise.all([
       request({ type: "youtube-source", tabId }),
       chrome.storage.local.get("popupDraft"),
+      chrome.storage.session.get("activeScan"),
     ]);
     if (location.hash !== sourceHash) return;
     sourceUrl = source.url || "";
@@ -334,8 +487,11 @@ async function useSource() {
         : sourceUrl || (!sourceHash ? draft?.url || "" : "");
     if (QUALITIES.includes(draft?.quality))
       $("#youtube-quality").value = draft.quality;
-    if (["video", "photos"].includes(draft?.mediaType))
-      $("#media-kind").value = draft.mediaType;
+    if (
+      sessionState.activeScan?.url ===
+      normalizePost($("#youtube-url").value)?.url
+    )
+      activeScanId = sessionState.activeScan.id;
     updateSourceLabel();
   } catch {
     /* Manual URL entry remains available. */

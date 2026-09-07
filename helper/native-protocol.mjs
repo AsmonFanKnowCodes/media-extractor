@@ -13,7 +13,7 @@ export function createDecoder(onMessage) {
     pending = Buffer.concat([pending, chunk]);
     while (pending.length >= 4) {
       const size = pending.readUInt32LE(0);
-      if (!size || size > 65536)
+      if (!size || size > 262144)
         throw new Error("Invalid native request size.");
       if (pending.length < size + 4) break;
       const value = JSON.parse(pending.subarray(4, size + 4).toString("utf8"));
