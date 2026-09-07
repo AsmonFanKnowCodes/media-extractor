@@ -219,17 +219,6 @@ try {
     path: path.join(root, "test-results", "popup-download.png"),
     fullPage: true,
   });
-  await app.setViewportSize({ width: 375, height: 812 });
-  assert.equal(
-    await app.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-    true,
-  );
-  await app.screenshot({
-    path: path.join(root, "test-results", "popup-narrow.png"),
-    fullPage: true,
-  });
   await app.goto(`chrome-extension://${id}/app.html#999`);
   await expect(app.locator("#youtube-url")).toHaveValue("");
   await app.locator("#youtube-url").fill("https://example.com/video");
@@ -241,6 +230,7 @@ try {
     "Enter a single YouTube",
   );
   assert.deepEqual(errors, []);
+  await app.setViewportSize({ width: 1280, height: 900 });
   const tabCountBefore = await worker.evaluate(
     async () => (await chrome.tabs.query({})).length,
   );
@@ -256,6 +246,70 @@ try {
     .toBe(1);
   const tabCountAfter = await worker.evaluate(
     async () => (await chrome.tabs.query({})).length,
+  );
+  const popupUrl = `chrome-extension://${id}/app.html`;
+  const popupSession = await context.browser().newBrowserCDPSession();
+  const { targetInfos } = await popupSession.send("Target.getTargets");
+  const popupTarget = targetInfos.find(
+    (target) => target.url === popupUrl && target.type !== "service_worker",
+  );
+  assert.ok(popupTarget, "Native popup target must exist.");
+  const { sessionId: popupSessionId } = await popupSession.send(
+    "Target.attachToTarget",
+    { targetId: popupTarget.targetId, flatten: false },
+  );
+  let popupCommandId = 0;
+  async function popupCommand(method, params = {}) {
+    const commandId = ++popupCommandId;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        popupSession.off("Target.receivedMessageFromTarget", listener);
+        reject(new Error("Popup inspection timed out"));
+      }, 5000);
+      function listener(event) {
+        if (event.sessionId !== popupSessionId) return;
+        const message = JSON.parse(event.message);
+        if (message.id !== commandId) return;
+        clearTimeout(timer);
+        popupSession.off("Target.receivedMessageFromTarget", listener);
+        message.error
+          ? reject(new Error(message.error.message))
+          : resolve(message.result);
+      }
+      popupSession.on("Target.receivedMessageFromTarget", listener);
+      popupSession
+        .send("Target.sendMessageToTarget", {
+          sessionId: popupSessionId,
+          message: JSON.stringify({ id: commandId, method, params }),
+        })
+        .catch(reject);
+    });
+  }
+  const geometry = await popupCommand("Runtime.evaluate", {
+    expression:
+      '({width:innerWidth,height:innerHeight,bodyWidth:document.body.getBoundingClientRect().width,scrollWidth:document.documentElement.scrollWidth,buttonBottom:document.querySelector("#youtube-download").getBoundingClientRect().bottom,footerTop:document.querySelector("footer").getBoundingClientRect().top})',
+    returnByValue: true,
+  });
+  const popupSize = geometry.result.value;
+  console.log("Actual popup geometry:", JSON.stringify(popupSize));
+  const screenshot = await popupCommand("Page.captureScreenshot");
+  await writeFile(
+    path.join(root, "test-results", "actual-brave-popup.png"),
+    Buffer.from(screenshot.data, "base64"),
+  );
+  await popupSession.detach();
+  assert.ok(
+    popupSize.width >= 420 && popupSize.width <= 440,
+    "Native popup must fit 420px content plus any browser gutter.",
+  );
+  assert.equal(popupSize.bodyWidth, 420);
+  assert.ok(
+    popupSize.scrollWidth <= popupSize.width,
+    "Native popup must have no horizontal overflow.",
+  );
+  assert.ok(
+    popupSize.buttonBottom <= popupSize.footerTop,
+    "Download button must remain above the footer.",
   );
   assert.equal(
     tabCountAfter,
