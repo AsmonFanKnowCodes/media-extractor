@@ -303,12 +303,53 @@ try {
         .catch(reject);
     });
   }
+  await expect
+    .poll(
+      async () =>
+        (
+          await popupCommand("Runtime.evaluate", {
+            expression: "document.body.dataset.connection",
+            returnByValue: true,
+          })
+        ).result.value,
+    )
+    .toBe("ready");
+  await popupCommand("Runtime.evaluate", {
+    expression:
+      "document.fonts.ready.then(()=>new Promise(resolve=>setTimeout(resolve,200)))",
+    awaitPromise: true,
+  });
   const geometry = await popupCommand("Runtime.evaluate", {
     expression:
       '({width:innerWidth,height:innerHeight,bodyWidth:document.body.getBoundingClientRect().width,scrollWidth:document.documentElement.scrollWidth,buttonBottom:document.querySelector("#youtube-download").getBoundingClientRect().bottom,footerTop:document.querySelector("footer").getBoundingClientRect().top})',
     returnByValue: true,
   });
   const popupSize = geometry.result.value;
+  const designAudit = await popupCommand("Runtime.evaluate", {
+    expression: `({
+    logoLoaded:document.querySelector('.service-logo').complete && document.querySelector('.service-logo').naturalWidth>0,
+    primaryColor:getComputedStyle(document.querySelector('.primary')).backgroundColor,
+    shadowCount:[...document.querySelectorAll('*')].filter(el=>getComputedStyle(el).boxShadow!=='none').length,
+    weights:[...new Set([...document.querySelectorAll('*')].map(el=>getComputedStyle(el).fontWeight))]
+  })`,
+    returnByValue: true,
+  });
+  assert.equal(
+    designAudit.result.value.logoLoaded,
+    true,
+    "Official YouTube asset must load locally.",
+  );
+  assert.equal(designAudit.result.value.primaryColor, "rgb(0, 113, 227)");
+  assert.equal(
+    designAudit.result.value.shadowCount,
+    0,
+    "The supplied design system has no shadows.",
+  );
+  assert.ok(
+    designAudit.result.value.weights.every((weight) =>
+      ["400", "600", "700"].includes(weight),
+    ),
+  );
   console.log("Actual popup geometry:", JSON.stringify(popupSize));
   await popupCommand("Runtime.evaluate", {
     expression: "new Promise(resolve=>setTimeout(resolve,250))",

@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>YouTube Downloader</title>
+    <title>Media Extractor</title>
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
     <header>
       <div class="brand">
         <span class="logo" aria-hidden="true"
-          ><svg viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z" /></svg
+          ><svg viewBox="0 0 24 24">
+            <path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4" /></svg
         ></span>
-        <div>YouTube Downloader<small>Save videos with audio</small></div>
+        <div>Media Extractor</div>
       </div>
       <span id="connection-label" class="connection">Connecting</span>
     </header>
@@ -36,9 +37,13 @@
           <button id="setup-shortcut" type="button">Set up</button>
         </div>
         <div class="source-context">
-          <span class="source-icon" aria-hidden="true"
-            ><svg viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z" /></svg
-          ></span>
+          <img
+            class="service-logo"
+            src="assets/youtube-logo.png"
+            alt="YouTube"
+            width="112"
+            height="38"
+          />
           <div>
             <strong id="source-title">Download a YouTube video</strong>
             <p id="source-caption">Paste a link below to get started.</p>

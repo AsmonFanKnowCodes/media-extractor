@@ -1,10 +1,10 @@
-# YouTube Video Downloader
+# Media Extractor
 
-A dedicated Brave / Chrome / Edge extension for YouTube videos and Shorts with audio. Version 3 starts its Windows downloader automatically through native messaging. No terminal startup or pairing key is needed for normal use.
+A personal media-tool extension for Brave / Chrome / Edge. YouTube video and Shorts downloads with audio are the current working tool. Version 3 starts its Windows downloader automatically through native messaging. No terminal startup or pairing key is needed for normal use.
 
-## Compact toolbar popup (version 4)
+## Shared visual foundation (version 5)
 
-Click the pinned extension icon while watching YouTube. The downloader opens directly beneath the icon in a 420 × 512 popup; it no longer creates a browser tab. The design uses warm off-white surfaces, orange controls, and soft shadows.
+Click the pinned extension icon while watching YouTube. The downloader opens directly beneath the icon in a 420 × 512 popup; it no longer creates a browser tab. The shared design follows `design-system/MASTER.md`: flat white/gray surfaces, blue actions, pill controls, and bundled Inter typography. The official YouTube logo identifies the current tool.
 
 - **Download:** video URL, quality, save-folder preview, and the download button.
 - **Activity:** progress, saved filenames, errors, and actual video dimensions.
