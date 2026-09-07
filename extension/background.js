@@ -1,5 +1,4 @@
-import { scanPage } from "./scanner.js";
-import { downloadable, filenameFor, mergeMedia } from "./core.js";
+import { normalizeYouTubeUrl } from "./youtube-url.js";
 
 async function helperRequest(route, { token, body } = {}) {
   token ||= (await chrome.storage.local.get("helperToken")).helperToken;
@@ -59,39 +58,14 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       return helperRequest("jobs", {
         body: { url: message.url, quality: message.quality },
       });
-    if (message.type === "scan") {
+    if (message.type === "youtube-source") {
       const source = (
         await chrome.storage.session.get(`source-${message.tabId}`)
       )[`source-${message.tabId}`];
-      if (!source)
-        throw new Error(
-          "Open a website and click the Media Extractor extension icon to start.",
-        );
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: source.tabId },
-        func: scanPage,
-      });
-      const frames = results.map((r) => r.result).filter(Boolean);
       return {
-        items: mergeMedia(frames),
-        title: frames[0]?.title,
-        url: frames[0]?.url,
-        inaccessibleFrames: frames.reduce(
-          (n, f) => n + f.inaccessibleFrames,
-          0,
-        ),
+        url: normalizeYouTubeUrl(source?.url || "") || "",
+        title: source?.title || "",
       };
-    }
-    if (message.type === "download") {
-      if (!message.item || !downloadable(message.item))
-        throw new Error("This media cannot be downloaded as a direct file.");
-      const id = await chrome.downloads.download({
-        url: message.item.url,
-        filename: filenameFor(message.item),
-        conflictAction: "uniquify",
-        saveAs: false,
-      });
-      return { id };
     }
     throw new Error("Unknown request.");
   })()

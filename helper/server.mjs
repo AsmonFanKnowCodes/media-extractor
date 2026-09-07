@@ -124,8 +124,8 @@ export function createHelper({
     try {
       if (req.method === "GET" && req.url === "/v1/info")
         return send(200, {
-          name: "Media Extractor Helper",
-          version: "1.1.0",
+          name: "YouTube Video Downloader Helper",
+          version: "2.0.0",
           outputDirectory,
         });
       if (req.method === "GET" && req.url === "/v1/jobs")
@@ -283,7 +283,7 @@ async function main() {
   });
   server.listen(43127, "127.0.0.1", () => {
     console.log(
-      `Media Extractor YouTube Helper\n\nPairing key (paste once in the extension):\n${token}\n\nSaving to: ${outputDirectory}\nKeep this window open while downloading.\n`,
+      `YouTube Video Downloader Helper\n\nPairing key (paste once in the extension):\n${token}\n\nSaving to: ${outputDirectory}\nKeep this window open while downloading.\n`,
     );
   });
 }

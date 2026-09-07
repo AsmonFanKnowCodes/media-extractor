@@ -34,6 +34,7 @@ function showJobs(jobs) {
     fragment.append(row);
   }
   $("#youtube-jobs").replaceChildren(fragment);
+  $("#jobs-empty").hidden = jobs.length > 0;
 }
 async function refreshJobs() {
   if (!connected || polling) return;
@@ -100,21 +101,21 @@ $("#youtube-form").addEventListener("submit", async (event) => {
     $("#youtube-download").disabled = false;
   }
 });
-// The scan may finish before or after this module loads. Observe the source URL.
 function useSource() {
-  const url = normalizeYouTubeUrl($("#source-url").textContent.trim());
-  if (url) {
-    $("#youtube-url").value = url;
-    $("#youtube-panel").open = true;
-  }
+  const sourceHash = location.hash;
+  const tabId = Number(sourceHash.slice(1));
+  if (!sourceHash || !Number.isInteger(tabId)) return;
+  request({ type: "youtube-source", tabId })
+    .then((source) => {
+      if (location.hash === sourceHash)
+        $("#youtube-url").value = source.url || "";
+    })
+    .catch(() => {
+      /* Pasting a URL remains available if the source expired. */
+    });
 }
-new MutationObserver(useSource).observe($("#source-url"), {
-  childList: true,
-  subtree: true,
-  characterData: true,
-});
 useSource();
-if (!location.hash) $("#youtube-panel").open = true;
+window.addEventListener("hashchange", useSource);
 connect().catch((error) => {
   $("#youtube-status").textContent = error.message;
   $("#youtube-setup").open = true;
