@@ -26,13 +26,13 @@ try {
   const page = await context.newPage();
   await page.goto(`chrome-extension://${id}/app.html`);
   await expect(page.locator("#youtube-status")).toContainText(
-    "Downloader ready",
+    "Ready to download.",
     { timeout: 20000 },
   );
   await page.locator("#youtube-url").fill(url);
   await page.locator("#youtube-quality").selectOption("720");
   await page
-    .getByRole("button", { name: "Download video ↓", exact: true })
+    .getByRole("button", { name: "Download video", exact: true })
     .click();
   await expect
     .poll(

@@ -57,16 +57,6 @@ function nativeRequest(method, params) {
     }
   });
 }
-chrome.action.onClicked.addListener(async (tab) => {
-  const key = `source-${tab.id}`;
-  await chrome.storage.session.set({
-    [key]: { tabId: tab.id, title: tab.title || "Website", url: tab.url || "" },
-  });
-  await chrome.tabs.create({
-    url: chrome.runtime.getURL(`app.html#${tab.id}`),
-  });
-});
-
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (
     sender.id !== chrome.runtime.id ||
@@ -88,6 +78,16 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         quality: message.quality,
       });
     if (message.type === "youtube-source") {
+      if (!Number.isInteger(message.tabId)) {
+        const [tab] = await chrome.tabs.query({
+          active: true,
+          lastFocusedWindow: true,
+        });
+        return {
+          url: normalizeYouTubeUrl(tab?.url || "") || "",
+          title: tab?.title || "",
+        };
+      }
       const source = (
         await chrome.storage.session.get(`source-${message.tabId}`)
       )[`source-${message.tabId}`];

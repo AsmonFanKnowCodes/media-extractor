@@ -3,110 +3,140 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>YouTube Video Downloader</title>
+    <title>YouTube Downloader</title>
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
     <header>
       <div class="brand">
         <span class="logo" aria-hidden="true"
-          ><svg viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z" /></svg></span
-        ><span
-          >YouTube Video Downloader<small>YOUR PERSONAL DOWNLOADER</small></span
-        >
+          ><svg viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z" /></svg
+        ></span>
+        <div>YouTube Downloader<small>VIDEO + AUDIO, SAVED LOCALLY</small></div>
       </div>
-      <span class="local">Saved on your computer</span>
+      <span id="connection-label" class="connection">Connecting</span>
     </header>
+    <nav class="tabs" aria-label="Downloader sections">
+      <button data-view="download" aria-pressed="true">Download</button
+      ><button data-view="activity" aria-pressed="false">
+        Activity <span id="job-count">0</span></button
+      ><button data-view="settings" aria-pressed="false">Settings</button>
+    </nav>
     <main>
-      <div class="eyebrow">YOUTUBE VIDEOS & SHORTS</div>
-      <h1>Your video. Ready to keep.</h1>
-      <p class="intro">
-        Paste a YouTube link, pick your quality, and download with audio.
-      </p>
-      <section class="download-panel" aria-label="Download a YouTube video">
-        <form id="youtube-form" class="youtube-form">
-          <label class="youtube-link"
-            >YouTube video URL<input
-              id="youtube-url"
-              type="url"
-              required
-              placeholder="https://www.youtube.com/watch?v=…"
-          /></label>
-          <label
-            >Quality<select id="youtube-quality">
-              <option value="1080">Up to 1080p</option>
-              <option value="720">Up to 720p</option>
-              <option value="best">Best available</option>
-            </select></label
-          >
-          <button class="primary" id="youtube-download" type="submit">
-            Download video ↓
+      <section
+        id="download-view"
+        class="view"
+        aria-label="Download a YouTube video"
+      >
+        <div class="eyebrow">YOUTUBE VIDEOS & SHORTS</div>
+        <h1>Save the good stuff.</h1>
+        <p class="intro">One link. Your video, with audio.</p>
+        <form id="youtube-form">
+          <label for="youtube-url">Video link</label
+          ><input
+            id="youtube-url"
+            type="url"
+            required
+            placeholder="Paste a YouTube link…"
+            autocomplete="off"
+          />
+          <div class="quality-row">
+            <div>
+              <label for="youtube-quality">Quality</label
+              ><select id="youtube-quality">
+                <option value="1080">Up to 1080p</option>
+                <option value="720">Up to 720p</option>
+                <option value="best">Best available</option>
+              </select>
+            </div>
+            <span class="format-chip">Video + audio</span>
+          </div>
+          <p class="quality-note">Original quality. Never upscaled.</p>
+          <button id="folder-shortcut" class="folder-shortcut" type="button">
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M3 7h7l2 2h9v11H3zM3 7V4h7l2 3" /></svg
+            ><span
+              ><small>SAVE TO</small
+              ><span id="folder-preview">Checking save folder…</span></span
+            ><span class="arrow" aria-hidden="true">›</span>
+          </button>
+          <button id="youtube-download" class="primary" type="submit">
+            Download video <span aria-hidden="true">↓</span>
           </button>
         </form>
-        <p class="quality-note">
-          Quality is a resolution limit, not upscaling. Best available can
-          exceed 1080p.
-        </p>
-        <form id="folder-form" class="folder-form">
-          <label
-            >Save videos to<input
-              id="save-folder"
-              type="text"
-              placeholder="Connect the downloader to choose a folder"
-              required
-              disabled
-          /></label>
-          <button id="browse-folder" type="button" disabled>Browse…</button>
-          <button id="save-folder-button" type="submit" disabled>
-            Save folder
-          </button>
-        </form>
-        <p id="folder-status" class="folder-note" role="status">
-          Your choice is remembered for future downloads.
-        </p>
-        <p id="youtube-status" role="status" aria-live="polite">
+        <p id="youtube-status" class="status" role="status" aria-live="polite">
           Starting the downloader…
         </p>
-        <details id="youtube-setup">
-          <summary>
-            Install the downloader <span>One-time Windows setup</span>
-          </summary>
-          <ol>
-            <li>
-              Run <strong>Install YouTube Downloader.exe</strong> from the
-              project folder. For a fresh Git clone, run
-              <strong>Install YouTube Downloader.cmd</strong>.
-            </li>
-            <li>
-              Wait for setup to finish, then click
-              <strong>Check connection</strong> below.
-            </li>
-          </ol>
-          <p class="setup-note">
-            The downloader starts automatically in the background. No terminal
-            or pairing key needed.
+      </section>
+      <section
+        id="activity-view"
+        class="view"
+        aria-label="Your downloads"
+        hidden
+      >
+        <div class="section-heading">
+          <h2>Your downloads</h2>
+          <span>This session</span>
+        </div>
+        <div id="youtube-jobs" aria-label="YouTube downloads"></div>
+        <div id="jobs-empty" class="empty">
+          <span aria-hidden="true">↓</span>
+          <h3>Nothing in the queue.</h3>
+          <p>Your downloads and saved locations will appear here.</p>
+        </div>
+      </section>
+      <section
+        id="settings-view"
+        class="view"
+        aria-label="Downloader settings"
+        hidden
+      >
+        <h2>Make yourself at home.</h2>
+        <p class="intro">Choose where your videos land.</p>
+        <form id="folder-form">
+          <label for="save-folder">Save videos to</label
+          ><input
+            id="save-folder"
+            type="text"
+            placeholder="Connect the downloader first"
+            required
+            disabled
+          />
+          <div class="folder-actions">
+            <button id="browse-folder" type="button" disabled>Browse…</button
+            ><button id="save-folder-button" type="submit" disabled>
+              Save folder
+            </button>
+          </div>
+        </form>
+        <p id="folder-status" class="status" role="status">
+          Remembered for future downloads.
+        </p>
+        <details id="youtube-setup" open>
+          <summary>Set up the downloader</summary>
+          <p>
+            Run <strong>Install YouTube Downloader.exe</strong> from the project
+            folder once, then check the connection.
+          </p>
+          <p class="fine-print">
+            Cloned from Git? Run Install YouTube Downloader.cmd instead.
           </p>
           <button id="youtube-retry" type="button">Check connection</button>
         </details>
-      </section>
-      <section class="history" aria-labelledby="history-title">
-        <div class="history-heading">
-          <h2 id="history-title">Your downloads</h2>
-          <span>This browser session</span>
+        <p id="connection-detail" class="fine-print"></p>
+        <div class="settings-note">
+          <strong>About quality</strong>
+          <p>
+            720p and 1080p set a maximum. Best available can go higher. Actual
+            dimensions appear after downloading.
+          </p>
         </div>
-        <div id="youtube-jobs" aria-label="YouTube downloads"></div>
-        <p id="jobs-empty" class="empty">
-          Your downloads will appear here, with progress and the saved file
-          location.
-        </p>
       </section>
-      <p class="hint">
-        Keep your browser open until downloads finish. Quality depends on the
-        source video. MP4 is preferred; some formats use MKV. Private,
-        restricted, DRM-protected videos and active live streams are not
-        supported.
-      </p>
     </main>
+    <footer>
+      <span class="footer-dot" aria-hidden="true"></span>Downloads continue when
+      this popup closes.<span class="footer-sub">Keep Brave open.</span>
+    </footer>
     <script type="module" src="youtube.js"></script>
   </body>
 </html>

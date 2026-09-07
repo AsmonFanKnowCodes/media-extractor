@@ -69,18 +69,15 @@ try {
   let app = await context.newPage();
   const errors = [];
   app.on("pageerror", (error) => errors.push(error.message));
-  await app.setViewportSize({ width: 1440, height: 1100 });
+  await app.setViewportSize({ width: 420, height: 580 });
   await app.goto(`chrome-extension://${id}/app.html#123`);
   await expect(app.locator("#youtube-url")).toHaveValue(
     "https://www.youtube.com/watch?v=BaW_jenozKc",
   );
-  await expect(app.locator("#youtube-status")).toContainText(
+  await expect(app.locator("#connection-detail")).toContainText(
     "Install YouTube Downloader.exe",
   );
-  assert.equal(
-    await app.locator("#youtube-token,#gallery,#scan,footer").count(),
-    0,
-  );
+  assert.equal(await app.locator("#youtube-token,#gallery,#scan").count(), 0);
   const permissions = await worker.evaluate(() => chrome.permissions.getAll());
   assert.ok(permissions.permissions.includes("nativeMessaging"));
   assert.equal((permissions.origins || []).length, 0);
@@ -136,14 +133,17 @@ try {
       mkdir(folder, { recursive: true }),
     ),
   );
+  await app.locator('[data-view="settings"]').click();
   await app
     .getByRole("button", { name: "Check connection", exact: true })
     .click();
   await expect(app.locator("#youtube-status")).toContainText(
-    "Downloader ready",
+    "Ready to download.",
     { timeout: 20000 },
   );
+  await app.locator('[data-view="download"]').click();
   await app.locator("#youtube-quality").selectOption("720");
+  await app.locator('[data-view="settings"]').click();
   await app.locator("#save-folder").fill("relative-folder");
   await app.getByRole("button", { name: "Save folder", exact: true }).click();
   await expect(app.locator("#folder-status")).toContainText(
@@ -151,30 +151,36 @@ try {
   );
   await app.locator("#save-folder").fill(typedFolder);
   await app.getByRole("button", { name: "Save folder", exact: true }).click();
-  await expect(app.locator("#folder-status")).toContainText("Future downloads");
+  await expect(app.locator("#folder-status")).toContainText(
+    "Saved for future downloads.",
+  );
   await app.getByRole("button", { name: "Browse…", exact: true }).click();
   await expect(app.locator("#save-folder")).toHaveValue(pickedFolder);
   await writeFile(path.join(temp, "cancel-picker"), "");
   await app.getByRole("button", { name: "Browse…", exact: true }).click();
   await expect(app.locator("#folder-status")).toContainText("Folder unchanged");
+  await app.locator('[data-view="download"]').click();
   await app
-    .getByRole("button", { name: "Download video ↓", exact: true })
+    .getByRole("button", { name: "Download video", exact: true })
     .click();
   await expect(app.locator("#youtube-status")).toContainText(
     "Download started",
   );
+  await app.locator('[data-view="settings"]').click();
   await app.locator("#save-folder").fill(nextFolder);
   await app.getByRole("button", { name: "Save folder", exact: true }).click();
-  await expect(app.locator("#folder-status")).toContainText("Future downloads");
+  await expect(app.locator("#folder-status")).toContainText(
+    "Saved for future downloads.",
+  );
   await app.close();
   if (process.env.NATIVE_IDLE_TEST === "1")
     await new Promise((resolve) => setTimeout(resolve, 35000));
   app = await context.newPage();
   app.on("pageerror", (error) => errors.push(error.message));
-  await app.setViewportSize({ width: 1440, height: 1100 });
+  await app.setViewportSize({ width: 420, height: 580 });
   await app.goto(`chrome-extension://${id}/app.html#123`);
   await expect(app.locator("#youtube-status")).toContainText(
-    "Downloader ready",
+    "Ready to download.",
   );
   await expect(app.locator('.youtube-job[data-state="complete"]')).toHaveCount(
     1,
@@ -195,13 +201,14 @@ try {
   );
   await expect(app.locator("#jobs-empty")).toBeHidden();
   await app.locator("#youtube-url").fill("https://youtu.be/aaaaaaaaaaa");
+  await app.locator('[data-view="download"]').click();
   await app
-    .getByRole("button", { name: "Download video ↓", exact: true })
+    .getByRole("button", { name: "Download video", exact: true })
     .click();
   await expect(app.locator('.youtube-job[data-state="failed"]')).toHaveCount(1);
   await app.reload();
   await expect(app.locator("#youtube-status")).toContainText(
-    "Downloader ready",
+    "Ready to download.",
   );
   await expect(app.locator(".youtube-job")).toHaveCount(2);
   console.log(
@@ -209,7 +216,7 @@ try {
   );
   await mkdir(path.join(root, "test-results"), { recursive: true });
   await app.screenshot({
-    path: path.join(root, "test-results", "native-desktop.png"),
+    path: path.join(root, "test-results", "popup-download.png"),
     fullPage: true,
   });
   await app.setViewportSize({ width: 375, height: 812 });
@@ -220,19 +227,44 @@ try {
     true,
   );
   await app.screenshot({
-    path: path.join(root, "test-results", "native-mobile.png"),
+    path: path.join(root, "test-results", "popup-narrow.png"),
     fullPage: true,
   });
   await app.goto(`chrome-extension://${id}/app.html#999`);
   await expect(app.locator("#youtube-url")).toHaveValue("");
   await app.locator("#youtube-url").fill("https://example.com/video");
+  await app.locator('[data-view="download"]').click();
   await app
-    .getByRole("button", { name: "Download video ↓", exact: true })
+    .getByRole("button", { name: "Download video", exact: true })
     .click();
   await expect(app.locator("#youtube-status")).toContainText(
     "Enter a single YouTube",
   );
   assert.deepEqual(errors, []);
+  const tabCountBefore = await worker.evaluate(
+    async () => (await chrome.tabs.query({})).length,
+  );
+  await worker.evaluate(() => chrome.action.openPopup());
+  await expect
+    .poll(async () =>
+      worker.evaluate(
+        async () =>
+          (await chrome.runtime.getContexts({ contextTypes: ["POPUP"] }))
+            .length,
+      ),
+    )
+    .toBe(1);
+  const tabCountAfter = await worker.evaluate(
+    async () => (await chrome.tabs.query({})).length,
+  );
+  assert.equal(
+    tabCountAfter,
+    tabCountBefore,
+    "The toolbar popup must not create a browser tab.",
+  );
+  console.log(
+    "PASS: actual Brave action popup opens, with no new browser tab.",
+  );
   console.log(
     "PASS: responsive layout, expired-source fallback and invalid URL feedback; no uncaught UI errors.",
   );

@@ -2,6 +2,18 @@
 
 A dedicated Brave / Chrome / Edge extension for YouTube videos and Shorts with audio. Version 3 starts its Windows downloader automatically through native messaging. No terminal startup or pairing key is needed for normal use.
 
+## Compact toolbar popup (version 4)
+
+Click the pinned extension icon while watching YouTube. The downloader opens directly beneath the icon in a 420 × 580 popup; it no longer creates a browser tab. The design uses warm off-white surfaces, orange controls, and soft shadows.
+
+- **Download:** video URL, quality, save-folder preview, and the download button.
+- **Activity:** progress, saved filenames, errors, and actual video dimensions.
+- **Settings:** choose a folder and resolve installation/connection issues.
+
+Closing the popup or clicking outside it does not stop a download. Native work stays in the background while Brave is running. Browsing for a folder can close the popup when Windows takes focus; select the folder, then reopen the icon. The saved folder will be refreshed. URL drafts and quality are remembered for the current source page.
+
+Existing version 3 users only need to reload the extension and close their old full-page downloader tab. No helper reinstall is needed for this UI update.
+
 ## Upgrade from version 2
 
 1. Run **Install YouTube Downloader.exe** once from this project folder. If you cloned the source and the EXE is missing, run **Install YouTube Downloader.cmd** to build and open the installer.
@@ -23,7 +35,7 @@ It authorizes the unpacked extension ID derived from this project's extension-fo
 
 ## Save folder and quality
 
-Use **Browse…** for the Windows folder chooser. Selecting a folder saves it immediately. Alternatively, type an existing absolute path under **Save videos to** and click **Save folder**. The app checks that the folder is writable and remembers it for future downloads. Cancelling the dialog keeps the previous folder. You can create a new folder inside the Windows chooser.
+Open **Settings** and use **Browse…** for the Windows folder chooser. Selecting a folder saves it immediately. Alternatively, type an existing absolute path under **Save videos to** and click **Save folder**. The app checks that the folder is writable and remembers it for future downloads. Cancelling the dialog keeps the previous folder. You can create a new folder inside the Windows chooser.
 
 The quality selector controls yt-dlp's real format selection. The 720/1080 options cap video height; **Best available** removes the cap and prioritizes resolution before preferring MP4. No upscaling is performed. Completed files show actual width × height inspected with FFprobe, when available.
 
@@ -33,7 +45,7 @@ Open a YouTube video or Short and click the extension icon to fill its URL autom
 
 The native app starts in the background on demand. yt-dlp downloads the media and FFmpeg combines video and audio. MP4 is preferred, with MKV as a fallback. Quality cannot exceed the original video. The save directory is shown in the extension; existing installations keep `Downloads/Media Extractor/YouTube`.
 
-Up to two downloads can run per browser connection. You can close the downloader tab, but **keep Brave/Chrome/Edge running until downloads finish**. Closing the browser, disabling/reloading the extension, or restarting the native host can interrupt downloads. Recent job status resets when the native connection restarts; downloaded files remain. These files do not appear in browser download history.
+Up to two downloads can run per browser connection. You can close the downloader tab, but **keep Brave/Chrome/Edge running until downloads finish**. Closing the browser, disabling/reloading the extension, or restarting the native host can interrupt downloads. Activity shows recent job status, which resets when the native connection restarts; downloaded files remain. These files do not appear in browser download history.
 
 Private, login/age-restricted, unavailable and DRM-protected videos, playlists, and active live streams are not supported. No browser cookies or account credentials are read. Download content you own or have permission to save.
 
