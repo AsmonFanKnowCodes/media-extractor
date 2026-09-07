@@ -255,6 +255,32 @@ select {
 .quality-row > div {
   flex: 1;
 }
+.quality-row .media-kind {
+  flex: 0 0 120px;
+}
+.service-logo.platform-icon {
+  width: 32px;
+  height: 32px;
+  margin: 0 16px 0 8px;
+}
+.files-list {
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.session-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.4;
+}
+.session-toggle input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+  padding: 0;
+}
 .format-chip {
   border: 0;
   border-radius: var(--radius-pill);

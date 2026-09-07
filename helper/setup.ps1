@@ -21,6 +21,9 @@ function Get-VerifiedReleaseAsset($Repository, $AssetName, $Destination) {
 
 $downloader = Join-Path $binDirectory 'yt-dlp.exe'
 Get-VerifiedReleaseAsset 'yt-dlp/yt-dlp' 'yt-dlp.exe' $downloader
+$galleryDownloader=Join-Path $binDirectory 'gallery-dl.exe'
+# This is the official nightly-build repository linked by gallery-dl's README.
+Get-VerifiedReleaseAsset 'gdl-org/builds' 'gallery-dl_windows.exe' $galleryDownloader
 $ffmpegCommand = Get-Command ffmpeg -ErrorAction SilentlyContinue
 if ($ffmpegCommand) {
   $ffmpegDirectory = Split-Path -Parent $ffmpegCommand.Source
@@ -42,7 +45,7 @@ if ($ffmpegCommand) {
 $downloadsDirectory = (Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders').'{374DE290-123F-4565-9164-39C4925E467B}'
 if ($downloadsDirectory) { $downloadsDirectory = [Environment]::ExpandEnvironmentVariables($downloadsDirectory) }
 else { $downloadsDirectory = Join-Path $env:USERPROFILE 'Downloads' }
-$config = @{ executable=$downloader; ffmpegDirectory=$ffmpegDirectory; outputDirectory=(Join-Path $downloadsDirectory 'Media Extractor\YouTube') }
+$config = @{ executable=$downloader; galleryExecutable=$galleryDownloader; ffmpegDirectory=$ffmpegDirectory; outputDirectory=(Join-Path $downloadsDirectory 'Media Extractor\YouTube') }
 $config | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $localDirectory 'config.json') -Encoding UTF8
 # Windows PowerShell writes a BOM; Node's JSON parser expects plain UTF-8.
 $configPath = Join-Path $localDirectory 'config.json'

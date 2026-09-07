@@ -4,3 +4,11 @@
 - `InterVariable.woff2`: [Inter's official repository](https://github.com/rsms/inter/blob/master/docs/font-files/InterVariable.woff2). License: `Inter-LICENSE.txt` (SIL Open Font License).
 
 Assets load locally. The extension does not request fonts or branding from a third-party server at runtime.
+
+Additional official site icons, downloaded unchanged from the sites' icon endpoints:
+
+- Instagram: `https://static.cdninstagram.com/rsrc.php/yr/r/rzWiSjZRxk5.webp`, linked by instagram.com.
+- X: `https://x.com/favicon.ico`.
+- Reddit: `https://www.redditstatic.com/shreddit/assets/favicon/64x64.png`, linked by reddit.com.
+- TikTok: `https://www.tiktok.com/favicon.ico` (the endpoint serves PNG bytes).
+- Facebook: `https://static.xx.fbcdn.net/rsrc.php/y1/r/ay1hV6OlegS.ico`, linked by facebook.com.

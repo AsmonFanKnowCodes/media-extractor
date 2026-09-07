@@ -6,7 +6,8 @@ import { mkdir, readFile, writeFile, access } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeYouTubeUrl } from "../extension/youtube-url.js";
+import { normalizePost, PLATFORMS, QUALITIES } from "../extension/platforms.js";
+import { photoArgs, listPhotos } from "./photos.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const runFile = promisify(execFile);
@@ -16,11 +17,12 @@ export function downloadArgs(
   outputDirectory,
   jobId,
   ffmpegDirectory,
+  useBrowserSession = false,
 ) {
-  const normalized = normalizeYouTubeUrl(url);
-  if (!normalized)
-    throw new Error("Enter a single YouTube video or Shorts URL.");
-  if (!["720", "1080", "best"].includes(quality))
+  const post = normalizePost(url);
+  const normalized = post?.url;
+  if (!normalized) throw new Error("Enter a supported video or post URL.");
+  if (!QUALITIES.includes(quality))
     throw new Error("Choose a supported quality.");
   const cap = quality === "best" ? "" : `[height<=${quality}]`;
   return [
@@ -45,7 +47,7 @@ export function downloadArgs(
     "--match-filters",
     "!is_live",
     "-f",
-    `bv*${cap}+ba/b${cap}`,
+    `bv*${cap}+ba/b${cap}/bv*${cap}`,
     "-S",
     "res,ext:mp4:m4a",
     "--merge-output-format",
@@ -61,6 +63,9 @@ export function downloadArgs(
     "download:ME_PROGRESS %(progress._percent_str)s",
     "--print",
     "after_move:ME_FILE %(filepath)j",
+    ...(useBrowserSession && post.platform !== "youtube"
+      ? ["--cookies-from-browser", "brave"]
+      : []),
     "--",
     normalized,
   ];
@@ -69,6 +74,7 @@ export function downloadArgs(
 export function createHelper({
   token,
   executable,
+  galleryExecutable,
   ffmpegDirectory,
   outputDirectory,
   resolveOutputDirectory = async () => outputDirectory,
@@ -89,6 +95,10 @@ export function createHelper({
       outputDirectory: job.outputDirectory,
       width: job.width,
       height: job.height,
+      platform: job.platform,
+      mediaType: job.mediaType,
+      files: job.files,
+      directory: job.directory,
     };
   }
   const server = createServer(async (req, res) => {
@@ -132,8 +142,10 @@ export function createHelper({
     try {
       if (req.method === "GET" && req.url === "/v1/info")
         return send(200, {
-          name: "YouTube Video Downloader Helper",
-          version: "3.1.0",
+          name: "Media Extractor Helper",
+          version: "6.0.0",
+          platforms: Object.keys(PLATFORMS),
+          photosAvailable: !!galleryExecutable,
           outputDirectory: await resolveOutputDirectory(),
         });
       if (req.method === "GET" && req.url === "/v1/jobs")
@@ -147,54 +159,99 @@ export function createHelper({
           return send(413, { error: "Request too large." });
       }
       const data = JSON.parse(body);
-      const url = normalizeYouTubeUrl(data.url);
-      if (!url)
+      const post = normalizePost(data.url);
+      const url = post?.url;
+      if (!post)
         return send(400, {
-          error: "Enter a single YouTube video or Shorts URL.",
+          error:
+            "Enter a post link from YouTube, Instagram, X, Reddit, TikTok or Facebook.",
+        });
+      const mediaType = data.mediaType || "video";
+      const useBrowserSession =
+        data.useBrowserSession === true && post.platform !== "youtube";
+      if (!["video", "photos"].includes(mediaType))
+        return send(400, { error: "Choose Video or Photos." });
+      if (mediaType === "photos" && post.platform === "youtube")
+        return send(400, { error: "YouTube photo posts are not supported." });
+      if (mediaType === "photos" && !galleryExecutable)
+        return send(503, {
+          error:
+            "Photo support needs the updated helper. Run Update YouTube Downloader.cmd once.",
         });
       if (active.size >= 2)
         return send(409, {
           error: "Two downloads are already running. Wait for one to finish.",
         });
       const duplicate = [...jobs.values()].find(
-        (j) => active.has(j.id) && j.url === url,
+        (j) => active.has(j.id) && j.url === url && j.mediaType === mediaType,
       );
       if (duplicate) return send(200, { job: publicJob(duplicate) });
       const id = randomUUID();
-      const jobDirectory = await resolveOutputDirectory();
-      const args = downloadArgs(
-        url,
-        data.quality,
-        jobDirectory,
-        id,
-        ffmpegDirectory,
-      );
+      const baseDirectory = await resolveOutputDirectory();
+      const jobDirectory =
+        mediaType === "photos"
+          ? path.join(
+              baseDirectory,
+              `${PLATFORMS[post.platform]} photos ${id.slice(0, 8)}`,
+            )
+          : baseDirectory;
+      await mkdir(jobDirectory, { recursive: true });
+      const args =
+        mediaType === "photos"
+          ? photoArgs(url, jobDirectory, useBrowserSession)
+          : downloadArgs(
+              url,
+              data.quality,
+              jobDirectory,
+              id,
+              ffmpegDirectory,
+              useBrowserSession,
+            );
       const job = {
         id,
         url,
+        platform: post.platform,
+        mediaType,
+        files: [],
+        directory: jobDirectory,
         quality: data.quality,
         state: "preparing",
-        progress: "Finding video and audio…",
+        progress:
+          mediaType === "photos"
+            ? "Finding photos in this post…"
+            : "Finding video and audio…",
         createdAt: new Date().toISOString(),
-        outputDirectory: jobDirectory,
+        outputDirectory: baseDirectory,
       };
       while (jobs.size >= 50) {
         const oldest = [...jobs.keys()].find((key) => !active.has(key));
         if (!oldest) break;
         jobs.delete(oldest);
       }
+      if (active.size >= 2)
+        return send(409, {
+          error: "Two downloads are already running. Wait for one to finish.",
+        });
       jobs.set(id, job);
       active.add(id);
-      const child = spawnProcess(executable, args, {
-        windowsHide: true,
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      const child = spawnProcess(
+        mediaType === "photos" ? galleryExecutable : executable,
+        args,
+        {
+          windowsHide: true,
+          shell: false,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
       let pending = "",
         errorTail = "";
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");
       child.stdout.on("data", (chunk) => {
+        if (mediaType === "photos") {
+          job.state = "downloading";
+          job.progress = "Downloading photos…";
+        }
         pending += chunk;
         const lines = pending.split(/\r?\n/);
         pending = lines.pop().slice(-16384);
@@ -214,8 +271,10 @@ export function createHelper({
                 typeof filename === "string" &&
                 path.dirname(path.resolve(filename)) ===
                   path.resolve(jobDirectory)
-              )
-                job.filename = filename;
+              ) {
+                job.filename ||= filename;
+                if (!job.files.includes(filename)) job.files.push(filename);
+              }
             } catch {
               /* Ignore malformed external output. */
             }
@@ -233,10 +292,31 @@ export function createHelper({
       child.on("close", async (code) => {
         active.delete(id);
         if (job.state === "failed") return;
+        if (mediaType === "photos") {
+          job.files = await listPhotos(jobDirectory).catch(() => []);
+          job.filename = job.files[0];
+        } else {
+          const verified = [];
+          for (const file of job.files) {
+            try {
+              await access(file);
+              verified.push(file);
+            } catch {}
+          }
+          job.files = verified;
+          job.filename = verified[0];
+        }
+        if (code !== 0 && job.files.length) {
+          job.state = "partial";
+          job.error = `Saved ${job.files.length} file(s), but some media failed. ${errorTail.slice(-900)}`;
+          return;
+        }
         if (code === 0 && job.filename) {
           try {
             await access(job.filename);
             try {
+              if (mediaType === "photos" || job.files.length > 1)
+                throw new Error("Multi-file metadata is shown per file.");
               const { stdout } = await runFile(
                 path.join(ffmpegDirectory, "ffprobe.exe"),
                 [
@@ -264,7 +344,10 @@ export function createHelper({
               /* A saved file stays saved even when metadata inspection is unavailable. */
             }
             job.state = "complete";
-            job.progress = "Saved with video and audio.";
+            job.progress =
+              mediaType === "photos"
+                ? `Saved ${job.files.length} photo(s).`
+                : `Saved ${job.files.length} video(s).`;
             return;
           } catch {
             /* Missing output must not be reported as saved. */
@@ -276,7 +359,7 @@ export function createHelper({
           .filter((line) => line.startsWith("ERROR:"));
         job.error =
           errors.slice(-2).join(" ").slice(0, 1400) ||
-          "The downloader did not produce a file. The video may be unavailable or a live stream.";
+          `No ${mediaType === "photos" ? "photos" : "videos"} were saved. This post may have no matching media, need login, or be unavailable.`;
       });
       send(202, { job: publicJob(job) });
     } catch (error) {

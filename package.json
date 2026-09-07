@@ -1,9 +1,9 @@
 {
   "name": "media-extractor",
-  "version": "5.0.1",
+  "version": "6.0.0",
   "private": true,
   "type": "module",
-  "description": "A dedicated YouTube video downloader for Chrome and Edge.",
+  "description": "Download videos and photo posts from YouTube, Instagram, X, Reddit, TikTok and Facebook.",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "test:browser": "node scripts/browser-test.mjs",

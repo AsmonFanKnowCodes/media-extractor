@@ -35,6 +35,14 @@ test(
           acodec: "none",
         },
         {
+          format_id: "v1440",
+          height: 1440,
+          width: 2560,
+          ext: "mp4",
+          vcodec: "avc1",
+          acodec: "none",
+        },
+        {
           format_id: "v2160",
           height: 2160,
           width: 3840,
@@ -67,6 +75,8 @@ test(
       for (const [quality, expected] of [
         ["720", "v720+a"],
         ["1080", "v1080+a"],
+        ["1440", "v1440+a"],
+        ["2160", "v2160+a"],
         ["best", "v2160+a"],
       ]) {
         const args = downloadArgs(

@@ -1,6 +1,6 @@
 # Media Extractor — main design rules
 
-This is the visual source of truth for the extension, adapted from the user's supplied Apple-style rules. All future tools share this shell. YouTube is the only working tool in this release; do not invent disabled platform tiles or imply additional support.
+This is the visual source of truth for the extension, adapted from the user's supplied Apple-style rules. All future tools share this shell. The implemented tools are YouTube, Instagram, X, Reddit, TikTok and Facebook. Do not imply support for unimplemented platforms.
 
 ## Foundation
 
@@ -9,7 +9,7 @@ This is the visual source of truth for the extension, adapted from the user's su
 - Main surface `#FAFAFC`, header / button text `#FFFFFF`, secondary plane `#F5F5F7`.
 - Action blue `#0071E3`, pressed blue `#0066CC`, inline-link blue `#2997FF`.
 - Functional borders `#D2D2D7`; use for inputs/tabs, not decorative section rules.
-- Brand assets retain their original colors. YouTube's official red logo is the explicit exception to the monochrome application palette; it identifies a tool, never the extension itself.
+- Brand assets retain their original colors. Official platform logos are the explicit exceptions to the monochrome application palette; it identifies a tool, never the extension itself.
 
 ## Typography
 

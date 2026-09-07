@@ -17,6 +17,10 @@ if (-not (Test-Path -LiteralPath $configPath)) {
   & (Join-Path $PSScriptRoot 'setup.ps1')
 }
 $oldConfig = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+if(-not $oldConfig.galleryExecutable -or -not (Test-Path -LiteralPath $oldConfig.galleryExecutable)) {
+ & (Join-Path $PSScriptRoot 'setup.ps1')
+ $oldConfig=Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+}
 if (-not (Test-Path -LiteralPath $oldConfig.executable)) { throw 'The downloader is missing. Run Update YouTube Downloader.cmd.' }
 $Destination = [System.IO.Path]::GetFullPath($Destination)
 $helperDirectory = Join-Path $Destination 'helper'
@@ -24,11 +28,13 @@ $binDirectory = Join-Path $Destination 'bin'
 $extensionDirectory = Join-Path $Destination 'extension'
 New-Item -ItemType Directory -Path $Destination,$helperDirectory,$binDirectory,$extensionDirectory -Force | Out-Null
 Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $Destination 'node.exe') -Force
-foreach ($name in @('server.mjs','native.mjs','native-protocol.mjs','settings.mjs')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force }
+foreach ($name in @('server.mjs','native.mjs','native-protocol.mjs','settings.mjs','photos.mjs')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force }
 Copy-Item -LiteralPath (Join-Path $projectRoot 'extension\youtube-url.js') -Destination (Join-Path $extensionDirectory 'youtube-url.js') -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'extension\platforms.js') -Destination (Join-Path $extensionDirectory 'platforms.js') -Force
 Copy-Item -LiteralPath $oldConfig.executable -Destination (Join-Path $binDirectory 'yt-dlp.exe') -Force
+Copy-Item -LiteralPath $oldConfig.galleryExecutable -Destination (Join-Path $binDirectory 'gallery-dl.exe') -Force
 foreach ($name in @('ffmpeg.exe','ffprobe.exe')) { Copy-Item -LiteralPath (Join-Path $oldConfig.ffmpegDirectory $name) -Destination (Join-Path $binDirectory $name) -Force }
-$config = @{executable=(Join-Path $binDirectory 'yt-dlp.exe');ffmpegDirectory=$binDirectory;outputDirectory=$oldConfig.outputDirectory}
+$config = @{executable=(Join-Path $binDirectory 'yt-dlp.exe');galleryExecutable=(Join-Path $binDirectory 'gallery-dl.exe');ffmpegDirectory=$binDirectory;outputDirectory=$oldConfig.outputDirectory}
 $installedConfigPath=Join-Path $helperDirectory 'config.json'
 if(Test-Path -LiteralPath $installedConfigPath) {
  $savedConfig=Get-Content -LiteralPath $installedConfigPath -Raw | ConvertFrom-Json

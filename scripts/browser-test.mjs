@@ -128,6 +128,14 @@ try {
   const configPath = path.join(installation, "helper", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8"));
   config.executable = fixture;
+  const galleryFixture = path.join(installation, "fixture-gallery.exe");
+  run(compiler, [
+    "/nologo",
+    "/target:exe",
+    `/out:${galleryFixture}`,
+    path.join(root, "tests", "FixtureGallery.cs"),
+  ]);
+  config.galleryExecutable = galleryFixture;
   config.outputDirectory = path.join(temp, "downloads");
   await writeFile(configPath, JSON.stringify(config));
   run(compiler, [
@@ -223,6 +231,116 @@ try {
     "Ready to download.",
   );
   await expect(app.locator(".youtube-job")).toHaveCount(2);
+  const platformCases = [
+    [
+      "Instagram",
+      "https://www.instagram.com/p/TEST123/",
+      "https://www.instagram.com/p/TEST123/",
+    ],
+    [
+      "X",
+      "https://x.com/demo/status/123456789",
+      "https://x.com/demo/status/123456789",
+    ],
+    [
+      "Reddit",
+      "https://www.reddit.com/comments/abc123/",
+      "https://www.reddit.com/comments/abc123/",
+    ],
+    [
+      "TikTok",
+      "https://www.tiktok.com/@demo/video/123456789",
+      "https://www.tiktok.com/@demo/photo/123456789",
+    ],
+    [
+      "Facebook",
+      "https://www.facebook.com/watch/?v=123456789",
+      "https://www.facebook.com/photo.php?fbid=123456789",
+    ],
+  ];
+  let completed = 1;
+  for (const [platform, videoUrl, photoUrl] of platformCases) {
+    await app.locator('[data-view="download"]').click();
+    await app.locator("#youtube-url").fill(videoUrl);
+    await app.locator("#media-kind").selectOption("video");
+    await app.locator("#youtube-quality").selectOption("2160");
+    await expect(
+      app.getByRole("img", { name: platform, exact: true }),
+    ).toBeVisible();
+    await expect
+      .poll(() =>
+        app
+          .locator(".service-logo")
+          .evaluate((image) => image.complete && image.naturalWidth > 0),
+      )
+      .toBe(true);
+    await app
+      .getByRole("button", { name: "Download video", exact: true })
+      .click();
+    await expect
+      .poll(
+        async () =>
+          (
+            await app.evaluate(() =>
+              chrome.runtime.sendMessage({ type: "youtube-jobs" }),
+            )
+          ).jobs.filter((job) => job.state === "complete").length,
+        { timeout: 15000 },
+      )
+      .toBe(++completed);
+    await app.locator("#youtube-url").fill(photoUrl);
+    await app.locator("#media-kind").selectOption("photos");
+    await expect(app.locator("#youtube-quality")).toBeDisabled();
+    await app
+      .getByRole("button", { name: "Download photos", exact: true })
+      .click();
+    await expect
+      .poll(async () => {
+        const response = await app.evaluate(() =>
+          chrome.runtime.sendMessage({ type: "youtube-jobs" }),
+        );
+        return response.jobs[0]?.files?.length;
+      })
+      .toBe(2);
+    const photoJob = await app.evaluate(
+      async () =>
+        (await chrome.runtime.sendMessage({ type: "youtube-jobs" })).jobs[0],
+    );
+    assert.equal(photoJob.mediaType, "photos");
+    assert.equal(photoJob.state, "complete");
+    completed++;
+    assert.ok(
+      photoJob.files.every((file) => file.startsWith(photoJob.directory)),
+    );
+  }
+  await app
+    .locator("#youtube-url")
+    .fill("https://www.instagram.com/p/PARTIAL/");
+  await app
+    .getByRole("button", { name: "Download photos", exact: true })
+    .click();
+  await expect(app.locator('.youtube-job[data-state="partial"]')).toHaveCount(
+    1,
+  );
+  await app.locator("#youtube-url").fill("https://www.instagram.com/p/EMPTY/");
+  await app
+    .getByRole("button", { name: "Download photos", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (
+          await app.evaluate(() =>
+            chrome.runtime.sendMessage({ type: "youtube-jobs" }),
+          )
+        ).jobs[0]?.state,
+    )
+    .toBe("failed");
+  await app.locator("#youtube-url").fill("https://youtu.be/BaW_jenozKc");
+  await expect(app.locator("#media-kind")).toHaveValue("video");
+  console.log(
+    "PASS: all five social video/photo routes, official site icons, album files, partial failures, empty photo posts and YouTube video-only mode (fixture downloaders).",
+  );
   console.log(
     "PASS: real Windows registration and native EXE startup, automatic reconnect, quality selection, download continuing after tab closure, saved file and error reporting (fixture downloader).",
   );
@@ -239,7 +357,7 @@ try {
     .getByRole("button", { name: "Download video", exact: true })
     .click();
   await expect(app.locator("#youtube-status")).toContainText(
-    "Enter a single YouTube",
+    "Enter a post link",
   );
   assert.deepEqual(errors, []);
   await app.setViewportSize({ width: 1280, height: 900 });

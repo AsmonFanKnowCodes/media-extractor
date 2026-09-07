@@ -1,4 +1,4 @@
-import { normalizeYouTubeUrl } from "./youtube-url.js";
+import { normalizePost } from "./platforms.js";
 
 const HOST_NAME = "com.personal.youtube_downloader";
 let nativePort;
@@ -76,6 +76,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       return nativeRequest("download", {
         url: message.url,
         quality: message.quality,
+        mediaType: message.mediaType,
+        useBrowserSession: message.useBrowserSession === true,
       });
     if (message.type === "youtube-source") {
       if (!Number.isInteger(message.tabId)) {
@@ -84,7 +86,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
           lastFocusedWindow: true,
         });
         return {
-          url: normalizeYouTubeUrl(tab?.url || "") || "",
+          url: normalizePost(tab?.url || "")?.url || "",
           title: tab?.title || "",
         };
       }
@@ -92,7 +94,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         await chrome.storage.session.get(`source-${message.tabId}`)
       )[`source-${message.tabId}`];
       return {
-        url: normalizeYouTubeUrl(source?.url || "") || "",
+        url: normalizePost(source?.url || "")?.url || "",
         title: source?.title || "",
       };
     }

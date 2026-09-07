@@ -73,7 +73,12 @@ const decode = createDecoder(async (message) => {
     if (!route) throw new Error("Unknown downloader command.");
     const body =
       message.method === "download"
-        ? { url: message.params?.url, quality: message.params?.quality }
+        ? {
+            url: message.params?.url,
+            quality: message.params?.quality,
+            mediaType: message.params?.mediaType,
+            useBrowserSession: message.params?.useBrowserSession,
+          }
         : null;
     const response = await fetch(base + route, {
       method: body ? "POST" : "GET",

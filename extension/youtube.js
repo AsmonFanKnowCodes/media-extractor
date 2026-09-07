@@ -1,4 +1,9 @@
-import { normalizeYouTubeUrl } from "./youtube-url.js";
+import {
+  normalizePost,
+  PLATFORMS,
+  PLATFORM_ASSETS,
+  QUALITIES,
+} from "./platforms.js";
 
 const $ = (selector) => document.querySelector(selector);
 let connected = false,
@@ -7,22 +12,66 @@ let connected = false,
 let folderBusy = false;
 let sourceUrl = "";
 let sourceTitle = "";
+let lastVideoQuality = "1080";
+chrome.storage.local.get("useBrowserSession").then((value) => {
+  $("#use-browser-session").checked = value.useBrowserSession === true;
+});
+$("#use-browser-session").addEventListener("change", () =>
+  chrome.storage.local.set({
+    useBrowserSession: $("#use-browser-session").checked,
+  }),
+);
 function updateSourceLabel() {
-  const hasUrl = normalizeYouTubeUrl($("#youtube-url").value);
-  const matches =
-    sourceUrl && normalizeYouTubeUrl($("#youtube-url").value) === sourceUrl;
+  const post = normalizePost($("#youtube-url").value);
+  const matches = sourceUrl && post?.url === sourceUrl;
+  const platform = post?.platform;
+  const logo = document.querySelector(".service-logo");
+  logo.hidden = !platform;
+  if (platform) {
+    logo.src = PLATFORM_ASSETS[platform];
+    logo.alt = PLATFORMS[platform];
+    logo.classList.toggle("platform-icon", platform !== "youtube");
+  }
   $("#source-title").textContent =
     matches && sourceTitle
       ? sourceTitle.replace(/ - YouTube$/, "")
-      : hasUrl
-        ? "Video ready to save"
-        : "Add a YouTube video";
-  $("#source-caption").textContent = matches
-    ? "From your current tab"
-    : hasUrl
-      ? "Choose quality and save location."
-      : "Paste a video or Shorts link below.";
+      : platform
+        ? `${PLATFORMS[platform]} post`
+        : "Paste a post link";
+  $("#source-caption").textContent = platform
+    ? "Choose Video or Photos below."
+    : "YouTube, Instagram, X, Reddit, TikTok, Facebook";
+  const photosOption = $('#media-kind option[value="photos"]');
+  photosOption.disabled = platform === "youtube";
+  if (platform === "youtube") {
+    if ($("#media-kind").value === "photos")
+      $("#youtube-quality").value = lastVideoQuality;
+    $("#media-kind").value = "video";
+  }
+  updateMediaKind();
 }
+function updateMediaKind() {
+  const photos = $("#media-kind").value === "photos";
+  $("#youtube-quality").disabled = photos;
+  const bestOption = $('#youtube-quality option[value="best"]');
+  if (photos) {
+    if ($("#youtube-quality").value !== "best")
+      lastVideoQuality = $("#youtube-quality").value;
+    bestOption.textContent = "Original photos";
+    $("#youtube-quality").value = "best";
+  } else {
+    bestOption.textContent = "Best available";
+  }
+  $("#youtube-download").textContent = photos
+    ? "Download photos"
+    : "Download video";
+}
+$("#media-kind").addEventListener("change", () => {
+  if ($("#media-kind").value === "video")
+    $("#youtube-quality").value = lastVideoQuality;
+  updateMediaKind();
+  saveDraft();
+});
 $("#youtube-url").addEventListener("input", updateSourceLabel);
 $("#setup-shortcut").addEventListener("click", () => switchView("settings"));
 function switchView(view) {
@@ -48,6 +97,7 @@ function saveDraft() {
     popupDraft: {
       url: $("#youtube-url").value,
       quality: $("#youtube-quality").value,
+      mediaType: $("#media-kind").value,
       sourceUrl,
     },
   });
@@ -124,8 +174,26 @@ function showJobs(jobs) {
           : job.progress;
     if (job.width && job.height)
       status.textContent = `${job.width} × ${job.height} pixels · ${status.textContent}`;
+    if (job.files?.length > 1) {
+      title.textContent = `${PLATFORMS[job.platform] || "Post"} · ${job.files.length} ${job.mediaType === "photos" ? "photos" : "videos"}`;
+      if (job.state === "complete")
+        status.textContent = `Saved ${job.files.length} files to ${job.directory || job.outputDirectory}`;
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Show files";
+      const list = document.createElement("ul");
+      list.className = "files-list";
+      for (const file of job.files.slice(0, 50)) {
+        const entry = document.createElement("li");
+        entry.textContent = file.split(/[\\/]/).pop();
+        list.append(entry);
+      }
+      details.append(summary, list);
+      row.append(details);
+    }
+    if (job.state === "partial") status.textContent = job.error;
     row.dataset.state = job.state;
-    row.append(title, status);
+    row.prepend(title, status);
     fragment.append(row);
   }
   $("#youtube-jobs").replaceChildren(fragment);
@@ -152,6 +220,10 @@ async function refreshJobs() {
 }
 async function connect() {
   const info = await request({ type: "youtube-info" });
+  if (!info.platforms)
+    throw new Error(
+      "Install the latest helper to enable additional platforms and photos.",
+    );
   connected = true;
   connectionState(true);
   showFolder(info.outputDirectory);
@@ -178,10 +250,10 @@ $("#youtube-retry").addEventListener("click", async () => {
 });
 $("#youtube-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const url = normalizeYouTubeUrl($("#youtube-url").value.trim());
+  const url = normalizePost($("#youtube-url").value.trim())?.url;
   if (!url) {
     $("#youtube-status").textContent =
-      "Enter a single YouTube video or Shorts link.";
+      "Enter a post link from YouTube, Instagram, X, Reddit, TikTok or Facebook.";
     $("#youtube-url").focus();
     return;
   }
@@ -192,6 +264,8 @@ $("#youtube-form").addEventListener("submit", async (event) => {
       type: "youtube-download",
       url,
       quality: $("#youtube-quality").value,
+      mediaType: $("#media-kind").value,
+      useBrowserSession: $("#use-browser-session").checked,
     });
     if (result.job?.outputDirectory) showFolder(result.job.outputDirectory);
     $("#youtube-status").textContent =
@@ -224,8 +298,10 @@ async function useSource() {
       draft?.sourceUrl === sourceUrl
         ? draft.url
         : sourceUrl || (!sourceHash ? draft?.url || "" : "");
-    if (["720", "1080", "best"].includes(draft?.quality))
+    if (QUALITIES.includes(draft?.quality))
       $("#youtube-quality").value = draft.quality;
+    if (["video", "photos"].includes(draft?.mediaType))
+      $("#media-kind").value = draft.mediaType;
     updateSourceLabel();
   } catch {
     /* Manual URL entry remains available. */
