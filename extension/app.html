@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Media Extractor</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="app.html" aria-label="Media Extractor home"
+        ><span class="logo" aria-hidden="true">m<span>e</span></span
+        ><span>Media Extractor<small>YOUR PERSONAL MEDIA TOOL</small></span></a
+      ><span class="local">Runs locally · No account needed</span>
+    </header>
+    <main>
+      <div class="eyebrow">COLLECT WHAT CATCHES YOUR EYE</div>
+      <div class="intro">
+        <div>
+          <h1>A page full of possibilities.</h1>
+          <p>Find the images. Grab the videos. Keep your favorites.</p>
+        </div>
+        <button id="scan" class="secondary">
+          Rescan page <span aria-hidden="true">↻</span>
+        </button>
+      </div>
+      <section class="source" aria-label="Source website">
+        <span class="source-icon" aria-hidden="true">↗</span>
+        <div>
+          <span class="eyebrow">EXTRACTING FROM</span>
+          <h2 id="source-title">Open a website to get started</h2>
+          <p id="source-url">
+            Click the extension icon on the page you want to scan.
+          </p>
+        </div>
+        <span id="total" class="badge">0 files</span>
+      </section>
+      <div class="toolbar">
+        <div class="filters" aria-label="Filter by media type">
+          <button data-filter="all" aria-pressed="true">
+            All media <span id="count-all">0</span></button
+          ><button data-filter="image" aria-pressed="false">
+            Images <span id="count-image">0</span></button
+          ><button data-filter="video" aria-pressed="false">
+            Videos <span id="count-video">0</span>
+          </button>
+        </div>
+        <label class="search"
+          >Search media<input
+            id="search"
+            type="search"
+            placeholder="Search by name or URL"
+        /></label>
+      </div>
+      <div class="selection">
+        <label
+          ><input id="select-all" type="checkbox" /> Select visible files</label
+        ><span id="visible-count">0 files</span>
+      </div>
+      <p id="status" role="status" aria-live="polite">Ready to scan.</p>
+      <p id="notice" class="notice" hidden></p>
+      <div id="empty" class="empty">
+        <span aria-hidden="true">↙</span>
+        <h2>Your finds will land here.</h2>
+        <p>
+          Open a website, then click Media Extractor in your browser toolbar.
+        </p>
+      </div>
+      <section
+        id="gallery"
+        class="gallery"
+        aria-label="Extracted media"
+      ></section>
+      <p class="hint">
+        Missing something? Scroll the source page or play its video, then
+        rescan. Protected streams and temporary blob videos cannot be saved as
+        direct files.
+      </p>
+    </main>
+    <footer>
+      <div>
+        <strong id="selected">0 selected</strong
+        ><span>Saved to Downloads / Media Extractor</span>
+      </div>
+      <div class="footer-actions">
+        <button id="downloads" class="secondary">View downloads</button
+        ><button id="download" class="primary" disabled>
+          Download selected <span aria-hidden="true">↓</span>
+        </button>
+      </div>
+    </footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

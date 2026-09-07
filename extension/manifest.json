@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Media Extractor",
+  "version": "1.0.0",
+  "description": "Find images and videos on the current page. Preview, select, and download them in one place.",
+  "minimum_chrome_version": "109",
+  "permissions": ["activeTab", "scripting", "downloads", "storage"],
+  "action": { "default_title": "Extract media from this page" },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  }
+}
