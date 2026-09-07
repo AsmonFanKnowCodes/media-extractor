@@ -4,7 +4,7 @@ A dedicated Brave / Chrome / Edge extension for YouTube videos and Shorts with a
 
 ## Compact toolbar popup (version 4)
 
-Click the pinned extension icon while watching YouTube. The downloader opens directly beneath the icon in a 420 × 580 popup; it no longer creates a browser tab. The design uses warm off-white surfaces, orange controls, and soft shadows.
+Click the pinned extension icon while watching YouTube. The downloader opens directly beneath the icon in a 420 × 512 popup; it no longer creates a browser tab. The design uses warm off-white surfaces, orange controls, and soft shadows.
 
 - **Download:** video URL, quality, save-folder preview, and the download button.
 - **Activity:** progress, saved filenames, errors, and actual video dimensions.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Video Downloader",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "Download YouTube videos and Shorts with audio using your local helper.",
   "minimum_chrome_version": "109",
   "permissions": ["activeTab", "storage", "nativeMessaging"],

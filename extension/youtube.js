@@ -6,6 +6,25 @@ let connected = false,
   outputDirectory = "";
 let folderBusy = false;
 let sourceUrl = "";
+let sourceTitle = "";
+function updateSourceLabel() {
+  const hasUrl = normalizeYouTubeUrl($("#youtube-url").value);
+  const matches =
+    sourceUrl && normalizeYouTubeUrl($("#youtube-url").value) === sourceUrl;
+  $("#source-title").textContent =
+    matches && sourceTitle
+      ? sourceTitle.replace(/ - YouTube$/, "")
+      : hasUrl
+        ? "Video ready to save"
+        : "Add a YouTube video";
+  $("#source-caption").textContent = matches
+    ? "From your current tab"
+    : hasUrl
+      ? "Choose quality and save location."
+      : "Paste a video or Shorts link below.";
+}
+$("#youtube-url").addEventListener("input", updateSourceLabel);
+$("#setup-shortcut").addEventListener("click", () => switchView("settings"));
 function switchView(view) {
   for (const button of document.querySelectorAll("[data-view]"))
     button.setAttribute("aria-pressed", String(button.dataset.view === view));
@@ -19,6 +38,10 @@ function connectionState(ready, error = "") {
   $("#connection-label").textContent = ready ? "Ready" : "Setup needed";
   $("#connection-label").dataset.state = ready ? "ready" : "error";
   $("#connection-detail").textContent = error;
+  document.body.dataset.connection = ready ? "ready" : "error";
+  $("#setup-banner").hidden = ready;
+  $("#youtube-download").disabled = !ready;
+  if (!ready) $("#folder-preview").textContent = "Available after setup";
 }
 function saveDraft() {
   chrome.storage.local.set({
@@ -182,7 +205,7 @@ $("#youtube-form").addEventListener("submit", async (event) => {
     if (!connected) $("#youtube-setup").hidden = false;
     $("#youtube-setup").open = true;
   } finally {
-    $("#youtube-download").disabled = false;
+    $("#youtube-download").disabled = !connected;
   }
 });
 async function useSource() {
@@ -195,6 +218,7 @@ async function useSource() {
     ]);
     if (location.hash !== sourceHash) return;
     sourceUrl = source.url || "";
+    sourceTitle = source.title || "";
     const draft = preferences.popupDraft;
     $("#youtube-url").value =
       draft?.sourceUrl === sourceUrl
@@ -202,6 +226,7 @@ async function useSource() {
         : sourceUrl || (!sourceHash ? draft?.url || "" : "");
     if (["720", "1080", "best"].includes(draft?.quality))
       $("#youtube-quality").value = draft.quality;
+    updateSourceLabel();
   } catch {
     /* Manual URL entry remains available. */
   }

@@ -12,7 +12,7 @@
         <span class="logo" aria-hidden="true"
           ><svg viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z" /></svg
         ></span>
-        <div>YouTube Downloader<small>VIDEO + AUDIO, SAVED LOCALLY</small></div>
+        <div>YouTube Downloader<small>Save videos with audio</small></div>
       </div>
       <span id="connection-label" class="connection">Connecting</span>
     </header>
@@ -28,9 +28,22 @@
         class="view"
         aria-label="Download a YouTube video"
       >
-        <div class="eyebrow">YOUTUBE VIDEOS & SHORTS</div>
-        <h1>Save the good stuff.</h1>
-        <p class="intro">One link. Your video, with audio.</p>
+        <div id="setup-banner" class="setup-banner" hidden>
+          <div>
+            <strong>Connect your downloader</strong>
+            <p>Finish the one-time setup to start saving videos.</p>
+          </div>
+          <button id="setup-shortcut" type="button">Set up</button>
+        </div>
+        <div class="source-context">
+          <span class="source-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z" /></svg
+          ></span>
+          <div>
+            <strong id="source-title">Download a YouTube video</strong>
+            <p id="source-caption">Paste a link below to get started.</p>
+          </div>
+        </div>
         <form id="youtube-form">
           <label for="youtube-url">Video link</label
           ><input
@@ -49,18 +62,18 @@
                 <option value="best">Best available</option>
               </select>
             </div>
-            <span class="format-chip">Video + audio</span>
+            <span class="format-chip">Audio included</span>
           </div>
           <p class="quality-note">Original quality. Never upscaled.</p>
           <button id="folder-shortcut" class="folder-shortcut" type="button">
             <svg aria-hidden="true" viewBox="0 0 24 24">
               <path d="M3 7h7l2 2h9v11H3zM3 7V4h7l2 3" /></svg
             ><span
-              ><small>SAVE TO</small
+              ><small>Save location</small
               ><span id="folder-preview">Checking save folder…</span></span
             ><span class="arrow" aria-hidden="true">›</span>
           </button>
-          <button id="youtube-download" class="primary" type="submit">
+          <button id="youtube-download" class="primary" type="submit" disabled>
             Download video <span aria-hidden="true">↓</span>
           </button>
         </form>
@@ -91,7 +104,7 @@
         aria-label="Downloader settings"
         hidden
       >
-        <h2>Make yourself at home.</h2>
+        <h2>Download settings</h2>
         <p class="intro">Choose where your videos land.</p>
         <form id="folder-form">
           <label for="save-folder">Save videos to</label

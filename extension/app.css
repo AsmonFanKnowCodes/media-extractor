@@ -23,14 +23,14 @@ html {
   width: 420px;
   min-width: 420px;
   max-width: 420px;
-  height: 580px;
+  height: 512px;
   overflow: hidden;
 }
 body {
   margin: 0;
   width: 420px;
   min-width: 420px;
-  height: 580px;
+  height: 512px;
   max-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -516,4 +516,264 @@ footer {
   * {
     transition: none !important;
   }
+}
+/* Compact utility layout: readable text, restrained surfaces, clear recovery. */
+:root {
+  --paper: #f5f2ec;
+  --surface: #fffdf9;
+  --ink: #302a23;
+  --muted: #70685e;
+  --line: #e1dbd2;
+  --accent: #c74a23;
+  --shadow: 0 2px 5px #38231209;
+}
+header {
+  padding: 16px 20px 14px;
+  border-bottom: 0;
+}
+.brand {
+  font-size: 15px;
+  letter-spacing: -0.25px;
+}
+.brand small {
+  font-size: 11px;
+  letter-spacing: 0;
+  font-weight: 400;
+  margin-top: 3px;
+}
+.logo {
+  background: #d65027;
+  box-shadow: none;
+  border-radius: 11px;
+  width: 36px;
+  height: 36px;
+}
+.connection {
+  background: transparent;
+  font-size: 11px;
+  padding: 5px 8px;
+}
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 3px;
+  margin: 0 20px;
+  padding: 3px;
+  border: 1px solid #e3ddd3;
+  border-radius: 11px;
+  background: #eae5dd;
+}
+.tabs button {
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 12px;
+  border: 0;
+  border-radius: 8px;
+}
+.tabs button[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: 0 1px 3px #3d2a1914;
+  font-weight: 650;
+}
+.tabs span {
+  background: #dcd5ca;
+}
+.view {
+  padding: 18px 20px 16px;
+}
+.source-context {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 18px;
+  min-height: 44px;
+}
+.source-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  background: #ede6dc;
+  border-radius: 11px;
+}
+.source-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: #b9512e;
+}
+.source-context > div {
+  min-width: 0;
+}
+.source-context strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.source-context p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+label {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+input,
+select {
+  background: var(--surface);
+  box-shadow: none;
+  height: 44px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+input::placeholder {
+  color: #8b8378;
+}
+.quality-row {
+  margin-top: 14px;
+  gap: 12px;
+  align-items: end;
+}
+.quality-row > div {
+  flex: 1;
+}
+select {
+  width: 100%;
+}
+.format-chip {
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  padding: 8px 0 8px 10px;
+  color: var(--muted);
+}
+.folder-shortcut {
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 0;
+  margin-bottom: 10px;
+}
+.folder-shortcut:hover {
+  background: transparent;
+  box-shadow: none;
+}
+.folder-shortcut small {
+  font-size: 11px;
+  letter-spacing: 0;
+  margin-bottom: 4px;
+}
+#folder-preview {
+  font-size: 12px;
+}
+.folder-shortcut .arrow {
+  font-size: 23px;
+}
+.primary {
+  background: #c74923;
+  border: 0;
+  box-shadow: 0 3px 7px #b84a2320;
+  min-height: 46px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.primary:hover {
+  background: #b83e1b;
+  box-shadow: 0 3px 9px #b84a2329;
+}
+.primary:disabled {
+  background: #e3dcd2;
+  color: #82796d;
+  opacity: 1;
+  box-shadow: none;
+}
+.status {
+  font-size: 11px;
+  line-height: 1.45;
+}
+footer {
+  font-size: 10px;
+  justify-content: center;
+  padding: 12px 18px;
+  gap: 6px;
+}
+.footer-sub {
+  display: none;
+}
+.setup-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #edd0b9;
+  border-radius: 11px;
+  background: #fff0e3;
+}
+.setup-banner > div {
+  flex: 1;
+}
+.setup-banner strong {
+  font-size: 12px;
+}
+.setup-banner p {
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 4px 0 0;
+  color: #835d41;
+}
+.setup-banner button {
+  min-height: 36px;
+  padding: 8px 12px;
+  background: #fffaf4;
+  border-color: #dfb899;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+body[data-connection="error"] .source-context {
+  display: none;
+}
+body[data-connection="error"] #youtube-download {
+  display: none;
+}
+body[data-connection="error"] #youtube-status {
+  display: none;
+}
+.youtube-job {
+  box-shadow: none;
+  padding: 14px;
+}
+.youtube-job p {
+  font-size: 11px;
+}
+.empty {
+  padding: 30px 16px;
+}
+.settings-note p,
+details p {
+  font-size: 12px;
+}
+.source-context {
+  margin-bottom: 12px;
+}
+.quality-row {
+  margin-top: 12px;
+}
+.folder-shortcut {
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+#download-view .folder-shortcut {
+  margin-top: 6px;
+}
+.view {
+  padding-top: 16px;
+  padding-bottom: 12px;
 }

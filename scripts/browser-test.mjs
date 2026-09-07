@@ -78,6 +78,15 @@ try {
     "Install YouTube Downloader.exe",
   );
   assert.equal(await app.locator("#youtube-token,#gallery,#scan").count(), 0);
+  await expect(app.locator("#setup-banner")).toBeVisible();
+  await expect(app.locator("#youtube-download")).toBeHidden();
+  await mkdir(path.join(root, "test-results"), { recursive: true });
+  await app.screenshot({
+    path: path.join(root, "test-results", "popup-setup-state.png"),
+    clip: { x: 0, y: 0, width: 420, height: 512 },
+  });
+  await app.getByRole("button", { name: "Set up", exact: true }).click();
+  await expect(app.locator("#settings-view")).toBeVisible();
   const permissions = await worker.evaluate(() => chrome.permissions.getAll());
   assert.ok(permissions.permissions.includes("nativeMessaging"));
   assert.equal((permissions.origins || []).length, 0);
@@ -231,6 +240,15 @@ try {
   );
   assert.deepEqual(errors, []);
   await app.setViewportSize({ width: 1280, height: 900 });
+  await worker.evaluate(() =>
+    chrome.storage.local.set({
+      popupDraft: {
+        sourceUrl: "",
+        url: "https://youtu.be/BaW_jenozKc",
+        quality: "1080",
+      },
+    }),
+  );
   const tabCountBefore = await worker.evaluate(
     async () => (await chrome.tabs.query({})).length,
   );
@@ -292,6 +310,10 @@ try {
   });
   const popupSize = geometry.result.value;
   console.log("Actual popup geometry:", JSON.stringify(popupSize));
+  await popupCommand("Runtime.evaluate", {
+    expression: "new Promise(resolve=>setTimeout(resolve,250))",
+    awaitPromise: true,
+  });
   const screenshot = await popupCommand("Page.captureScreenshot");
   await writeFile(
     path.join(root, "test-results", "actual-brave-popup.png"),
