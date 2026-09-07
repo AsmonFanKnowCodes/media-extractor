@@ -88,6 +88,9 @@ p {
 .intro {
   margin: 0 0 32px;
 }
+.setup-note {
+  font-size: 13px;
+}
 .download-panel {
   padding: 28px;
   border: 1px solid var(--line);

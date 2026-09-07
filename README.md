@@ -1,43 +1,56 @@
 # YouTube Video Downloader
 
-A dedicated Chrome / Edge extension for downloading YouTube videos and Shorts with audio. Choose up to 720p, up to 1080p, or best available quality. The Windows helper uses yt-dlp and FFmpeg on your computer.
+A dedicated Chrome / Edge extension for YouTube videos and Shorts with audio. Version 3 starts its Windows downloader automatically through native messaging. No terminal startup or pairing key is needed for normal use.
 
-## Existing installation
+## Upgrade from version 2
 
-Click **Reload** on the extension's card in your browser's Extensions page, then close the old downloader tab and open the extension again. It now appears as **YouTube Video Downloader**. Your saved helper pairing and existing download directory continue to work.
+1. Run **Install YouTube Downloader.exe** once from this project folder. If you cloned the source and the EXE is missing, run **Install YouTube Downloader.cmd** to build and open the installer.
+2. On your browser's Extensions page, click **Reload** for YouTube Video Downloader and accept the native-app permission if prompted.
+3. Close the old downloader tab and open the extension again. It should say **Downloader ready**.
 
-## First-time setup (Windows)
+The installer keeps your existing download directory. The old manually started helper is no longer needed; let any existing downloads finish before closing its window.
 
-1. Install Node.js 22 or newer if needed.
-2. Download or clone this project. Double-click **Setup YouTube Helper.cmd**. It downloads yt-dlp from its official GitHub release and verifies the SHA256 digest. It uses an existing FFmpeg or downloads a verified build from the yt-dlp FFmpeg project.
-3. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, click **Load unpacked**, and select this project's **extension** folder.
-4. Pin **YouTube Video Downloader** in the browser toolbar.
-5. Double-click **Start YouTube Helper.cmd** and keep its window open.
-6. Open the extension and paste the helper's pairing key into **Connect local helper**, then click **Connect helper**. Pairing is saved for later sessions.
+## First installation (Windows 10/11 x64)
+
+1. Install Node.js 22 or newer if needed. Setup copies the runtime into the private app folder for subsequent use.
+2. Download/extract the full project package. Open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, click **Load unpacked**, and select this project's **extension** folder.
+3. Run **Install YouTube Downloader.exe** (or **Install YouTube Downloader.cmd** when building from Git).
+4. Pin the extension and open it. If it was already open during installation, click **Check connection**.
+
+The installer runs for the current Windows user without administrator rights. It verifies downloaded yt-dlp / FFmpeg releases using published SHA256 digests, copies tools and Node to `%LOCALAPPDATA%/YouTubeVideoDownloader`, and registers the native host for Chrome and Edge. The .NET Framework compiler included with Windows builds the small native launcher.
+
+It authorizes the unpacked extension ID derived from this project's extension-folder path. Keep the extension in that location. If you move its folder, run the installer from the new location again. Advanced installs can pass `-ExtensionId` to `helper/install.ps1`. Browser-store publishing/review is separate from this personal unpacked installation.
 
 ## Download
 
-Open a YouTube video or Short and click the extension icon to fill its link automatically. Alternatively, paste a link into the downloader. Choose quality and click **Download video**.
+Open a YouTube video or Short and click the extension icon to fill its URL automatically. Alternatively, paste a link. Choose up to **720p**, up to **1080p**, or **Best available**, then click **Download video**.
 
-**Your downloads** shows recent progress, failures, and saved file locations. The helper combines video and audio. MP4 is preferred, with MKV as a fallback when required by available formats. Quality cannot exceed the source video. Downloads save to the directory shown by the helper, initially your Windows Downloads folder under `Media Extractor/YouTube`.
+The native app starts in the background on demand. yt-dlp downloads the media and FFmpeg combines video and audio. MP4 is preferred, with MKV as a fallback. Quality cannot exceed the original video. The save directory is shown in the extension; existing installations keep `Downloads/Media Extractor/YouTube`.
 
-Up to two downloads can run simultaneously. Closing the extension tab does not stop them; keep the helper running. Its recent job list resets when the helper restarts, while saved files remain. Press Ctrl+C in the helper window to stop it. Downloads are written by the helper, not listed in the browser's download history.
+Up to two downloads can run per browser connection. You can close the downloader tab, but **keep Chrome/Edge running until downloads finish**. Closing the browser, disabling/reloading the extension, or restarting the native host can interrupt downloads. Recent job status resets when the native connection restarts; downloaded files remain. These files do not appear in browser download history.
 
-Only single-video links are supported. Private, age/login-restricted, unavailable and DRM-protected videos, playlists, and active live streams are not supported. The helper does not read browser cookies or account credentials. Download content you own or have permission to save.
+Private, login/age-restricted, unavailable and DRM-protected videos, playlists, and active live streams are not supported. No browser cookies or account credentials are read. Download content you own or have permission to save.
 
-If YouTube extraction stops working, stop the helper, rerun **Setup YouTube Helper.cmd** to update yt-dlp, and restart it.
+## Update and troubleshooting
 
-## Permissions and privacy
+- **Connection failed:** run the installer, then Check connection. Confirm that the loaded `extension` folder belongs to the same project location.
+- **YouTube extraction stopped working:** close Chrome and Edge, run **Update YouTube Downloader.cmd**, then reopen the browser.
+- **Installer cannot overwrite a file:** close all Chrome/Edge windows so the old native host exits, then install again.
+- **Change download folder:** edit `outputDirectory` in `%LOCALAPPDATA%/YouTubeVideoDownloader/helper/config.json` and restart the browser. The update installer imports the project helper's saved configuration.
 
-- `activeTab`: read the current tab's URL after you click the extension icon. It does not scan or inject scripts into the page.
-- `storage`: remember the source URL and save the helper pairing key.
-- `http://127.0.0.1/*`: contact the helper on port 43127. It binds to loopback only and requires the pairing key. It validates the host, requesting origin, and YouTube URL, and launches fixed downloader arguments without a shell.
+Removing the extension prevents it from starting the native app. The app is not a Windows startup service or scheduled task. Its files live in the private app folder above; registration lives in the current user's Chrome/Edge `NativeMessagingHosts/com.personal.youtube_downloader` registry keys.
 
-There are no analytics, cloud uploads, or hosted services. The helper contacts YouTube using yt-dlp. Local settings, pairing keys, and downloaded tools are excluded from Git. No general media scanning, image downloads, gallery, or browser downloads permission is included.
+## Permissions and architecture
 
-## Development
+- `activeTab`: capture the current URL after the toolbar icon is clicked.
+- `storage`: store source-tab references. Old pairing keys are no longer used.
+- `nativeMessaging`: launch and communicate with the installed downloader.
 
-Native JavaScript modules and Manifest V3; no extension build step.
+The extension has no localhost host permission, general media scanner, or browser downloads permission. Native registration uses an exact extension allowlist. The native host validates its caller, framed messages and commands, and accepts only normalized single-video YouTube URLs. The tested download engine runs inside the native process behind a private, randomly authenticated loopback endpoint; this is not exposed to the extension UI. Downloader processes receive fixed arguments without a shell.
+
+There are no analytics or cloud uploads. The native app contacts YouTube. Tool binaries, machine configuration, and generated installer EXEs are excluded from Git.
+
+## Development and validation
 
 ```sh
 npm ci
@@ -47,6 +60,8 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Set `CHROMIUM_EXECUTABLE` to a compatible installed Chrome or Edge executable if needed. Browser tests use an isolated extension profile and a fixture downloader to check source autofill, pairing, quality submission, success/failure status, saved pairing, and responsive layout without relying on live YouTube availability. Screenshots go to `test-results/`.
+Set `CHROMIUM_EXECUTABLE` to an installed Chrome/Edge executable if needed. On a fresh checkout, run the installer first to provision dependencies used by browser tests. Tests register a uniquely named temporary native host for an isolated profile and compile a fixture downloader. They verify real native startup, installation errors, quality selection, success/failure handling, tab-close continuity, source autofill and responsive layout. Temporary registry entries and files are removed afterward. Fixture tests do not contact live YouTube. Set `NATIVE_IDLE_TEST=1` to additionally wait beyond the usual service-worker idle interval with the UI tab closed.
 
-Helper dependencies: [yt-dlp](https://github.com/yt-dlp/yt-dlp), [YouTube runtime setup](https://github.com/yt-dlp/yt-dlp/wiki/EJS), [FFmpeg builds](https://github.com/yt-dlp/FFmpeg-Builds). Their licenses apply to the third-party tools, which are downloaded during setup and not committed here.
+Build the installer with `powershell -NoProfile -ExecutionPolicy Bypass -File helper/build-installer.ps1`. Run `node scripts/live-smoke.mjs <YouTube URL>` for an optional real download through the installed app. Use short videos you may download.
+
+References: [Chrome native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [YouTube runtime setup](https://github.com/yt-dlp/yt-dlp/wiki/EJS), [FFmpeg builds](https://github.com/yt-dlp/FFmpeg-Builds). Third-party tools retain their own licenses and are downloaded during setup, not committed here.

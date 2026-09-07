@@ -125,7 +125,7 @@ export function createHelper({
       if (req.method === "GET" && req.url === "/v1/info")
         return send(200, {
           name: "YouTube Video Downloader Helper",
-          version: "2.0.0",
+          version: "3.0.0",
           outputDirectory,
         });
       if (req.method === "GET" && req.url === "/v1/jobs")
@@ -217,7 +217,7 @@ export function createHelper({
       });
       child.on("error", (error) => {
         job.state = "failed";
-        job.error = `Cannot start downloader: ${error.message}. Run Setup YouTube Helper.cmd.`;
+        job.error = `Cannot start downloader: ${error.message}. Run Install YouTube Downloader.exe again.`;
         active.delete(id);
       });
       child.on("close", async (code) => {
@@ -254,7 +254,7 @@ async function main() {
   const config = JSON.parse(
     await readFile(path.join(directory, ".local", "config.json"), "utf8").catch(
       () => {
-        throw new Error("Run Setup YouTube Helper.cmd first.");
+        throw new Error("Run Install YouTube Downloader.exe first.");
       },
     ),
   );

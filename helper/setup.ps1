@@ -49,4 +49,4 @@ $configPath = Join-Path $localDirectory 'config.json'
 [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json), [System.Text.UTF8Encoding]::new($false))
 & $downloader --version
 if ($LASTEXITCODE -ne 0) { throw 'yt-dlp could not start.' }
-Write-Host 'Setup complete. Open Start YouTube Helper.cmd next.'
+Write-Host 'Dependencies ready. Continue with Install YouTube Downloader.exe.'

@@ -1,53 +1,33 @@
 import { chromium, expect } from "@playwright/test";
 import { mkdtemp, cp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
-import { EventEmitter } from "node:events";
-import { PassThrough } from "node:stream";
-import { createHelper } from "../helper/server.mjs";
+import { extensionId } from "../helper/extension-id.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-const temp = await mkdtemp(path.join(tmpdir(), "youtube-downloader-test-"));
+const temp = await mkdtemp(path.join(tmpdir(), "youtube-native-test-"));
 const extension = path.join(temp, "extension");
+const installation = path.join(temp, "installed");
+const hostName = `com.personal.youtube_downloader_test_${Date.now()}`;
 await cp(path.join(root, "extension"), extension, { recursive: true });
-const helperToken = "b".repeat(64);
-const calls = [];
-const helper = createHelper({
-  token: helperToken,
-  executable: "fixture-downloader",
-  ffmpegDirectory: temp,
-  outputDirectory: temp,
-  spawnProcess: (_exe, args) => {
-    calls.push(args);
-    const child = new EventEmitter();
-    child.stdout = new PassThrough();
-    child.stderr = new PassThrough();
-    setTimeout(async () => {
-      if (args.at(-1).endsWith("aaaaaaaaaaa")) {
-        child.stderr.write("ERROR: Video unavailable.\n");
-        child.emit("close", 1);
-        return;
-      }
-      const filename = path.join(temp, "YouTube fixture with audio.mp4");
-      await writeFile(filename, "fixture video and audio");
-      child.stdout.write(
-        `ME_PROGRESS 100.0%\nME_FILE ${JSON.stringify(filename)}\n`,
-      );
-      child.emit("close", 0);
-    }, 250);
-    return child;
-  },
-});
-await new Promise((resolve) => helper.listen(0, "127.0.0.1", resolve));
 const backgroundPath = path.join(extension, "background.js");
 await writeFile(
   backgroundPath,
   (await readFile(backgroundPath, "utf8")).replace(
-    "127.0.0.1:43127",
-    `127.0.0.1:${helper.address().port}`,
+    "com.personal.youtube_downloader",
+    hostName,
   ),
 );
+function run(command, args) {
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (result.status !== 0)
+    throw new Error(`${command} failed: ${result.stderr}\n${result.stdout}`);
+}
 let context;
 try {
   context = await chromium.launchPersistentContext(path.join(temp, "profile"), {
@@ -65,6 +45,11 @@ try {
     context.serviceWorkers()[0] ||
     (await context.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
+  assert.equal(
+    await extensionId(extension),
+    id,
+    "Installer must derive the exact ID used by Chromium.",
+  );
   await worker.evaluate(async () => {
     await chrome.storage.session.set({
       "source-123": {
@@ -73,7 +58,7 @@ try {
       },
     });
   });
-  const app = await context.newPage();
+  let app = await context.newPage();
   const errors = [];
   app.on("pageerror", (error) => errors.push(error.message));
   await app.setViewportSize({ width: 1440, height: 1100 });
@@ -81,44 +66,88 @@ try {
   await expect(app.locator("#youtube-url")).toHaveValue(
     "https://www.youtube.com/watch?v=BaW_jenozKc",
   );
-  await expect(app.locator("#youtube-setup")).toHaveAttribute("open", "");
+  await expect(app.locator("#youtube-status")).toContainText(
+    "Install YouTube Downloader.exe",
+  );
   assert.equal(
-    await app.locator("#gallery,#scan,#search,#select-all,footer").count(),
+    await app.locator("#youtube-token,#gallery,#scan,footer").count(),
     0,
   );
   const permissions = await worker.evaluate(() => chrome.permissions.getAll());
-  assert.equal(permissions.permissions.includes("downloads"), false);
-  assert.equal(permissions.permissions.includes("scripting"), false);
-  const rejected = await app.evaluate(() =>
-    chrome.runtime.sendMessage({
-      type: "download",
-      item: { url: "https://example.com/image.jpg", type: "image" },
-    }),
-  );
-  assert.equal(rejected.ok, false);
+  assert.ok(permissions.permissions.includes("nativeMessaging"));
+  assert.equal((permissions.origins || []).length, 0);
   console.log(
-    "PASS: dedicated YouTube UI, source autofill, removed scanner/download permissions and rejected legacy download route.",
+    "PASS: missing-installation feedback, source autofill, no pairing field or localhost permission; exact Windows extension ID derivation.",
   );
-  await app.locator("#youtube-token").fill("c".repeat(64));
+
+  run("powershell.exe", [
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    path.join(root, "helper", "install.ps1"),
+    "-Destination",
+    installation,
+    "-HostName",
+    hostName,
+    "-ExtensionId",
+    id,
+  ]);
+  const compiler = path.join(
+    process.env.WINDIR,
+    "Microsoft.NET",
+    "Framework64",
+    "v4.0.30319",
+    "csc.exe",
+  );
+  const fixture = path.join(installation, "fixture-downloader.exe");
+  run(compiler, [
+    "/nologo",
+    "/target:exe",
+    "/reference:System.Web.Extensions.dll",
+    `/out:${fixture}`,
+    path.join(root, "tests", "FixtureDownloader.cs"),
+  ]);
+  const configPath = path.join(installation, "helper", "config.json");
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  config.executable = fixture;
+  config.outputDirectory = path.join(temp, "downloads");
+  await writeFile(configPath, JSON.stringify(config));
   await app
-    .getByRole("button", { name: "Connect helper", exact: true })
-    .click();
-  await expect(app.locator("#youtube-status")).toContainText("did not match");
-  await app.locator("#youtube-token").fill(helperToken);
-  await app
-    .getByRole("button", { name: "Connect helper", exact: true })
+    .getByRole("button", { name: "Check connection", exact: true })
     .click();
   await expect(app.locator("#youtube-status")).toContainText(
-    "Helper connected",
+    "Downloader ready",
+    { timeout: 20000 },
   );
   await app.locator("#youtube-quality").selectOption("720");
   await app
     .getByRole("button", { name: "Download video ↓", exact: true })
     .click();
+  await expect(app.locator("#youtube-status")).toContainText(
+    "Download started",
+  );
+  await app.close();
+  if (process.env.NATIVE_IDLE_TEST === "1")
+    await new Promise((resolve) => setTimeout(resolve, 35000));
+  app = await context.newPage();
+  app.on("pageerror", (error) => errors.push(error.message));
+  await app.setViewportSize({ width: 1440, height: 1100 });
+  await app.goto(`chrome-extension://${id}/app.html#123`);
+  await expect(app.locator("#youtube-status")).toContainText(
+    "Downloader ready",
+  );
   await expect(app.locator('.youtube-job[data-state="complete"]')).toHaveCount(
     1,
+    { timeout: 15000 },
   );
-  assert.match(calls[0][calls[0].indexOf("-f") + 1], /height<=720/);
+  const args = JSON.parse(
+    await readFile(
+      path.join(config.outputDirectory, "fixture-args.json"),
+      "utf8",
+    ),
+  );
+  assert.match(args[args.indexOf("-f") + 1], /height<=720/);
   await expect(app.locator("#jobs-empty")).toBeHidden();
   await app.locator("#youtube-url").fill("https://youtu.be/aaaaaaaaaaa");
   await app
@@ -127,15 +156,15 @@ try {
   await expect(app.locator('.youtube-job[data-state="failed"]')).toHaveCount(1);
   await app.reload();
   await expect(app.locator("#youtube-status")).toContainText(
-    "Helper connected",
+    "Downloader ready",
   );
   await expect(app.locator(".youtube-job")).toHaveCount(2);
   console.log(
-    "PASS: pairing failure/success, quality submission, completed/failed jobs, persisted pairing and restored recent jobs.",
+    "PASS: real Windows registration and native EXE startup, automatic reconnect, quality selection, download continuing after tab closure, saved file and error reporting (fixture downloader).",
   );
   await mkdir(path.join(root, "test-results"), { recursive: true });
   await app.screenshot({
-    path: path.join(root, "test-results", "youtube-desktop.png"),
+    path: path.join(root, "test-results", "native-desktop.png"),
     fullPage: true,
   });
   await app.setViewportSize({ width: 375, height: 812 });
@@ -146,7 +175,7 @@ try {
     true,
   );
   await app.screenshot({
-    path: path.join(root, "test-results", "youtube-mobile.png"),
+    path: path.join(root, "test-results", "native-mobile.png"),
     fullPage: true,
   });
   await app.goto(`chrome-extension://${id}/app.html#999`);
@@ -160,15 +189,25 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: responsive layout, expired source fallback, invalid URL feedback, no uncaught errors.",
+    "PASS: responsive layout, expired-source fallback and invalid URL feedback; no uncaught UI errors.",
   );
 } finally {
   await context?.close();
-  await new Promise((resolve) => helper.close(resolve));
+  // Delete only this run's uniquely named native host registry keys.
+  run("powershell.exe", [
+    "-NoProfile",
+    "-Command",
+    `foreach ($browser in @('Google\\Chrome','Microsoft\\Edge')) { $parent=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\\$browser\\NativeMessagingHosts",$true); if($parent) { $parent.DeleteSubKey('${hostName}',$false); $parent.Dispose() } }`,
+  ]);
   if (
     path.dirname(path.resolve(temp)) !== path.resolve(tmpdir()) ||
-    !path.basename(temp).startsWith("youtube-downloader-test-")
+    !path.basename(temp).startsWith("youtube-native-test-")
   )
     throw new Error("Unexpected test cleanup path");
-  await rm(temp, { recursive: true, force: true });
+  await rm(temp, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 200,
+  });
 }

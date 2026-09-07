@@ -44,38 +44,34 @@
           </button>
         </form>
         <p id="youtube-status" role="status" aria-live="polite">
-          Checking the local helper…
+          Starting the downloader…
         </p>
         <details id="youtube-setup">
-          <summary>Connect local helper <span>One-time pairing</span></summary>
+          <summary>
+            Install the downloader <span>One-time Windows setup</span>
+          </summary>
           <ol>
             <li>
-              Run <strong>Setup YouTube Helper.cmd</strong> in the project
-              folder once.
+              Run <strong>Install YouTube Downloader.exe</strong> from the
+              project folder. For a fresh Git clone, run
+              <strong>Install YouTube Downloader.cmd</strong>.
             </li>
             <li>
-              Open <strong>Start YouTube Helper.cmd</strong> and keep it
-              running.
+              Wait for setup to finish, then click
+              <strong>Check connection</strong> below.
             </li>
-            <li>Paste its pairing key below, then click Connect helper.</li>
           </ol>
-          <form id="youtube-connect-form" class="youtube-form">
-            <label class="youtube-link"
-              >Pairing key<input
-                id="youtube-token"
-                type="password"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="Paste the key from the helper window"
-                required /></label
-            ><button type="submit">Connect helper</button>
-          </form>
+          <p class="setup-note">
+            The downloader starts automatically in the background. No terminal
+            or pairing key needed.
+          </p>
+          <button id="youtube-retry" type="button">Check connection</button>
         </details>
       </section>
       <section class="history" aria-labelledby="history-title">
         <div class="history-heading">
           <h2 id="history-title">Your downloads</h2>
-          <span>This helper session</span>
+          <span>This browser session</span>
         </div>
         <div id="youtube-jobs" aria-label="YouTube downloads"></div>
         <p id="jobs-empty" class="empty">
@@ -84,7 +80,7 @@
         </p>
       </section>
       <p class="hint">
-        Keep the helper running until downloads finish. Quality depends on the
+        Keep your browser open until downloads finish. Quality depends on the
         source video. MP4 is preferred; some formats use MKV. Private,
         restricted, DRM-protected videos and active live streams are not
         supported.

@@ -1,6 +1,6 @@
 {
   "name": "youtube-video-downloader",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "description": "A dedicated YouTube video downloader for Chrome and Edge.",
@@ -8,7 +8,7 @@
     "test": "node --test tests/*.test.js",
     "test:browser": "node scripts/browser-test.mjs",
     "helper": "node helper/server.mjs",
-    "check": "node --check extension/background.js && node --check extension/youtube.js && node --check extension/youtube-url.js && node --check helper/server.mjs"
+    "check": "node --check extension/background.js && node --check extension/youtube.js && node --check extension/youtube-url.js && node --check helper/server.mjs && node --check helper/native.mjs && node --check helper/native-protocol.mjs"
   },
   "engines": {
     "node": ">=22"

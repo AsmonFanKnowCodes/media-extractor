@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "YouTube Video Downloader",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Download YouTube videos and Shorts with audio using your local helper.",
   "minimum_chrome_version": "109",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["http://127.0.0.1/*"],
+  "permissions": ["activeTab", "storage", "nativeMessaging"],
   "action": {
     "default_title": "Open YouTube Video Downloader"
   },

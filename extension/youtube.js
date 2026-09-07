@@ -45,33 +45,33 @@ async function refreshJobs() {
   } catch (error) {
     connected = false;
     $("#youtube-status").textContent = error.message;
+    $("#youtube-setup").hidden = false;
     $("#youtube-setup").open = true;
   } finally {
     polling = false;
   }
 }
-async function connect(token) {
-  const info = await request(
-    token ? { type: "youtube-connect", token } : { type: "youtube-info" },
-  );
+async function connect() {
+  const info = await request({ type: "youtube-info" });
   connected = true;
   outputDirectory = info.outputDirectory;
   $("#youtube-status").textContent =
-    `Helper connected. Saves to ${outputDirectory}`;
+    `Downloader ready. Saves to ${outputDirectory}`;
   $("#youtube-setup").open = false;
+  $("#youtube-setup").hidden = true;
   await refreshJobs();
 }
-$("#youtube-connect-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const button = event.submitter;
-  button.disabled = true;
+$("#youtube-retry").addEventListener("click", async () => {
+  $("#youtube-retry").disabled = true;
+  $("#youtube-status").textContent = "Starting the downloader…";
   try {
-    await connect($("#youtube-token").value.trim());
-    $("#youtube-token").value = "";
+    await connect();
   } catch (error) {
     $("#youtube-status").textContent = error.message;
+    $("#youtube-setup").hidden = false;
+    $("#youtube-setup").open = true;
   } finally {
-    button.disabled = false;
+    $("#youtube-retry").disabled = false;
   }
 });
 $("#youtube-form").addEventListener("submit", async (event) => {
@@ -96,7 +96,8 @@ $("#youtube-form").addEventListener("submit", async (event) => {
     await refreshJobs();
   } catch (error) {
     $("#youtube-status").textContent = error.message;
-    if (!connected) $("#youtube-setup").open = true;
+    if (!connected) $("#youtube-setup").hidden = false;
+    $("#youtube-setup").open = true;
   } finally {
     $("#youtube-download").disabled = false;
   }
@@ -118,6 +119,7 @@ useSource();
 window.addEventListener("hashchange", useSource);
 connect().catch((error) => {
   $("#youtube-status").textContent = error.message;
+  $("#youtube-setup").hidden = false;
   $("#youtube-setup").open = true;
 });
 setInterval(() => {
