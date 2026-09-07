@@ -507,7 +507,6 @@ details p {
   padding: 8px 15px;
   font-size: 14px;
 }
-body[data-connection="error"] .source-context,
 body[data-connection="error"] #youtube-download,
 body[data-connection="error"] #youtube-status {
   display: none;

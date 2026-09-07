@@ -1,6 +1,6 @@
 {
   "name": "media-extractor",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "private": true,
   "type": "module",
   "description": "A dedicated YouTube video downloader for Chrome and Edge.",

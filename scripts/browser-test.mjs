@@ -79,6 +79,9 @@ try {
   );
   assert.equal(await app.locator("#youtube-token,#gallery,#scan").count(), 0);
   await expect(app.locator("#setup-banner")).toBeVisible();
+  await expect(
+    app.getByRole("img", { name: "YouTube", exact: true }),
+  ).toBeVisible();
   await expect(app.locator("#youtube-download")).toBeHidden();
   await mkdir(path.join(root, "test-results"), { recursive: true });
   await app.screenshot({
