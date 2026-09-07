@@ -1,5 +1,13 @@
 import { chromium, expect } from "@playwright/test";
-import { mkdtemp, cp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  cp,
+  readFile,
+  writeFile,
+  mkdir,
+  rm,
+  realpath,
+} from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -113,6 +121,21 @@ try {
   config.executable = fixture;
   config.outputDirectory = path.join(temp, "downloads");
   await writeFile(configPath, JSON.stringify(config));
+  run(compiler, [
+    "/nologo",
+    "/target:exe",
+    `/out:${path.join(installation, "folder-picker.exe")}`,
+    path.join(root, "tests", "FixtureFolderPicker.cs"),
+  ]);
+  const canonicalTemp = await realpath(temp);
+  const typedFolder = path.join(canonicalTemp, "custom videos 日本語");
+  const pickedFolder = path.join(canonicalTemp, "picked videos");
+  const nextFolder = path.join(canonicalTemp, "next downloads");
+  await Promise.all(
+    [typedFolder, pickedFolder, nextFolder].map((folder) =>
+      mkdir(folder, { recursive: true }),
+    ),
+  );
   await app
     .getByRole("button", { name: "Check connection", exact: true })
     .click();
@@ -121,12 +144,28 @@ try {
     { timeout: 20000 },
   );
   await app.locator("#youtube-quality").selectOption("720");
+  await app.locator("#save-folder").fill("relative-folder");
+  await app.getByRole("button", { name: "Save folder", exact: true }).click();
+  await expect(app.locator("#folder-status")).toContainText(
+    "Folder not changed",
+  );
+  await app.locator("#save-folder").fill(typedFolder);
+  await app.getByRole("button", { name: "Save folder", exact: true }).click();
+  await expect(app.locator("#folder-status")).toContainText("Future downloads");
+  await app.getByRole("button", { name: "Browse…", exact: true }).click();
+  await expect(app.locator("#save-folder")).toHaveValue(pickedFolder);
+  await writeFile(path.join(temp, "cancel-picker"), "");
+  await app.getByRole("button", { name: "Browse…", exact: true }).click();
+  await expect(app.locator("#folder-status")).toContainText("Folder unchanged");
   await app
     .getByRole("button", { name: "Download video ↓", exact: true })
     .click();
   await expect(app.locator("#youtube-status")).toContainText(
     "Download started",
   );
+  await app.locator("#save-folder").fill(nextFolder);
+  await app.getByRole("button", { name: "Save folder", exact: true }).click();
+  await expect(app.locator("#folder-status")).toContainText("Future downloads");
   await app.close();
   if (process.env.NATIVE_IDLE_TEST === "1")
     await new Promise((resolve) => setTimeout(resolve, 35000));
@@ -142,12 +181,18 @@ try {
     { timeout: 15000 },
   );
   const args = JSON.parse(
-    await readFile(
-      path.join(config.outputDirectory, "fixture-args.json"),
-      "utf8",
-    ),
+    await readFile(path.join(pickedFolder, "fixture-args.json"), "utf8"),
   );
   assert.match(args[args.indexOf("-f") + 1], /height<=720/);
+  assert.equal(args[args.indexOf("-P") + 1], pickedFolder);
+  await expect(app.locator("#save-folder")).toHaveValue(nextFolder);
+  assert.equal(
+    JSON.parse(await readFile(configPath, "utf8")).outputDirectory,
+    nextFolder,
+  );
+  console.log(
+    "PASS: saved destination, typed Unicode paths, folder picker/cancel bridge, invalid path rejection, persistence and in-flight download destination preserved.",
+  );
   await expect(app.locator("#jobs-empty")).toBeHidden();
   await app.locator("#youtube-url").fill("https://youtu.be/aaaaaaaaaaa");
   await app
@@ -197,7 +242,7 @@ try {
   run("powershell.exe", [
     "-NoProfile",
     "-Command",
-    `foreach ($browser in @('Google\\Chrome','Microsoft\\Edge')) { $parent=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\\$browser\\NativeMessagingHosts",$true); if($parent) { $parent.DeleteSubKey('${hostName}',$false); $parent.Dispose() } }`,
+    `foreach ($browser in @('Google\\Chrome','Microsoft\\Edge','BraveSoftware\\Brave-Browser')) { $parent=[Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\\$browser\\NativeMessagingHosts",$true); if($parent) { $parent.DeleteSubKey('${hostName}',$false); $parent.Dispose() } }`,
   ]);
   if (
     path.dirname(path.resolve(temp)) !== path.resolve(tmpdir()) ||

@@ -43,6 +43,27 @@
             Download video ↓
           </button>
         </form>
+        <p class="quality-note">
+          Quality is a resolution limit, not upscaling. Best available can
+          exceed 1080p.
+        </p>
+        <form id="folder-form" class="folder-form">
+          <label
+            >Save videos to<input
+              id="save-folder"
+              type="text"
+              placeholder="Connect the downloader to choose a folder"
+              required
+              disabled
+          /></label>
+          <button id="browse-folder" type="button" disabled>Browse…</button>
+          <button id="save-folder-button" type="submit" disabled>
+            Save folder
+          </button>
+        </form>
+        <p id="folder-status" class="folder-note" role="status">
+          Your choice is remembered for future downloads.
+        </p>
         <p id="youtube-status" role="status" aria-live="polite">
           Starting the downloader…
         </p>

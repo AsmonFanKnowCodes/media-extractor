@@ -4,6 +4,48 @@ const $ = (selector) => document.querySelector(selector);
 let connected = false,
   polling = false,
   outputDirectory = "";
+let folderBusy = false;
+function showFolder(folder) {
+  outputDirectory = folder;
+  $("#save-folder").value = folder;
+  $("#save-folder").disabled = false;
+  $("#browse-folder").disabled = false;
+  $("#save-folder-button").disabled = false;
+}
+async function changeFolder(browse) {
+  if (folderBusy) return;
+  folderBusy = true;
+  $("#browse-folder").disabled = true;
+  $("#save-folder-button").disabled = true;
+  $("#folder-status").textContent = browse
+    ? "Choose a folder in the Windows dialog…"
+    : "Saving folder…";
+  try {
+    const result = await request(
+      browse
+        ? { type: "youtube-choose-folder" }
+        : {
+            type: "youtube-set-folder",
+            outputDirectory: $("#save-folder").value.trim(),
+          },
+    );
+    showFolder(result.outputDirectory);
+    $("#folder-status").textContent = result.cancelled
+      ? "Folder unchanged."
+      : `Saved. Future downloads go to ${outputDirectory}`;
+  } catch (error) {
+    $("#folder-status").textContent = `Folder not changed: ${error.message}`;
+  } finally {
+    folderBusy = false;
+    $("#browse-folder").disabled = false;
+    $("#save-folder-button").disabled = false;
+  }
+}
+$("#browse-folder").addEventListener("click", () => changeFolder(true));
+$("#folder-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  changeFolder(false);
+});
 async function request(message) {
   const response = await chrome.runtime.sendMessage(message);
   if (!response?.ok)
@@ -29,6 +71,8 @@ function showJobs(jobs) {
         : job.state === "complete"
           ? `Saved: ${job.filename}`
           : job.progress;
+    if (job.width && job.height)
+      status.textContent = `${job.width} × ${job.height} pixels · ${status.textContent}`;
     row.dataset.state = job.state;
     row.append(title, status);
     fragment.append(row);
@@ -54,7 +98,7 @@ async function refreshJobs() {
 async function connect() {
   const info = await request({ type: "youtube-info" });
   connected = true;
-  outputDirectory = info.outputDirectory;
+  showFolder(info.outputDirectory);
   $("#youtube-status").textContent =
     `Downloader ready. Saves to ${outputDirectory}`;
   $("#youtube-setup").open = false;
@@ -86,11 +130,12 @@ $("#youtube-form").addEventListener("submit", async (event) => {
   $("#youtube-download").disabled = true;
   try {
     if (!connected) await connect();
-    await request({
+    const result = await request({
       type: "youtube-download",
       url,
       quality: $("#youtube-quality").value,
     });
+    if (result.job?.outputDirectory) showFolder(result.job.outputDirectory);
     $("#youtube-status").textContent =
       `Download started. Files save to ${outputDirectory}`;
     await refreshJobs();

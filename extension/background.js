@@ -36,14 +36,17 @@ function nativeRequest(method, params) {
   }
   return new Promise((resolve, reject) => {
     const id = nextId++;
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(
-        new Error(
-          "Downloader response timed out. Check the recent downloads before retrying.",
-        ),
-      );
-    }, 20000);
+    const timer = setTimeout(
+      () => {
+        pending.delete(id);
+        reject(
+          new Error(
+            "Downloader response timed out. Check the recent downloads before retrying.",
+          ),
+        );
+      },
+      method === "choose-folder" ? 310000 : 20000,
+    );
     pending.set(id, { resolve, reject, timer });
     try {
       nativePort.postMessage({ id, method, params });
@@ -73,6 +76,12 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   (async () => {
     if (message.type === "youtube-info") return nativeRequest("info");
     if (message.type === "youtube-jobs") return nativeRequest("jobs");
+    if (message.type === "youtube-choose-folder")
+      return nativeRequest("choose-folder");
+    if (message.type === "youtube-set-folder")
+      return nativeRequest("set-folder", {
+        outputDirectory: message.outputDirectory,
+      });
     if (message.type === "youtube-download")
       return nativeRequest("download", {
         url: message.url,

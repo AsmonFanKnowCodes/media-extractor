@@ -1,5 +1,5 @@
 @echo off
-echo Close Chrome and Edge before updating the background downloader.
+echo Close Brave, Chrome and Edge before updating the background downloader.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0helper\setup.ps1"
 if errorlevel 1 (
   pause

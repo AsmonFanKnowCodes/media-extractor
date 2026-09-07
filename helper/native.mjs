@@ -4,11 +4,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHelper } from "./server.mjs";
 import { createDecoder, encodeMessage } from "./native-protocol.mjs";
+import { createSettings } from "./settings.mjs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
-const config = JSON.parse(
-  await readFile(path.join(directory, "config.json"), "utf8"),
-);
+const settings = createSettings(path.join(directory, "config.json"));
+const config = await settings.load();
+const runFile = promisify(execFile);
+let choosingFolder = false;
 const manifest = JSON.parse(
   await readFile(path.join(directory, "..", "native-host.json"), "utf8"),
 );
@@ -20,7 +24,11 @@ await mkdir(config.outputDirectory, { recursive: true });
 // Reuse the tested download engine privately within this native host process.
 // This random port/key is never exposed to the extension or a setup screen.
 const token = randomBytes(32).toString("hex");
-const server = createHelper({ ...config, token });
+const server = createHelper({
+  ...config,
+  token,
+  resolveOutputDirectory: async () => (await settings.load()).outputDirectory,
+});
 await new Promise((resolve, reject) => {
   server.once("error", reject);
   server.listen(0, "127.0.0.1", resolve);
@@ -34,6 +42,31 @@ const decode = createDecoder(async (message) => {
   try {
     if (!Number.isSafeInteger(id) || id < 1)
       throw new Error("Invalid request ID.");
+    if (message.method === "set-folder") {
+      const result = await settings.setFolder(message.params?.outputDirectory);
+      send({ id, ok: true, ...result });
+      return;
+    }
+    if (message.method === "choose-folder") {
+      if (choosingFolder) throw new Error("A folder window is already open.");
+      choosingFolder = true;
+      try {
+        const current = await settings.load();
+        const { stdout } = await runFile(
+          path.join(directory, "..", "folder-picker.exe"),
+          [current.outputDirectory],
+          { windowsHide: true, timeout: 300000, maxBuffer: 16384 },
+        );
+        const folder = stdout.replace(/^\uFEFF/, "").trim();
+        const result = folder
+          ? await settings.setFolder(folder)
+          : { cancelled: true, outputDirectory: current.outputDirectory };
+        send({ id, ok: true, ...result });
+        return;
+      } finally {
+        choosingFolder = false;
+      }
+    }
     const route = { info: "info", jobs: "jobs", download: "jobs" }[
       message.method
     ];

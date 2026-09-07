@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile, access } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -8,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeYouTubeUrl } from "../extension/youtube-url.js";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
+const runFile = promisify(execFile);
 export function downloadArgs(
   url,
   quality,
@@ -43,7 +45,9 @@ export function downloadArgs(
     "--match-filters",
     "!is_live",
     "-f",
-    `bv*${cap}[ext=mp4]+ba[ext=m4a]/b${cap}[ext=mp4]/bv*${cap}+ba/b${cap}`,
+    `bv*${cap}+ba/b${cap}`,
+    "-S",
+    "res,ext:mp4:m4a",
     "--merge-output-format",
     "mp4/mkv",
     "--windows-filenames",
@@ -67,6 +71,7 @@ export function createHelper({
   executable,
   ffmpegDirectory,
   outputDirectory,
+  resolveOutputDirectory = async () => outputDirectory,
   spawnProcess = spawn,
 }) {
   const jobs = new Map();
@@ -81,6 +86,9 @@ export function createHelper({
       error: job.error,
       filename: job.filename,
       createdAt: job.createdAt,
+      outputDirectory: job.outputDirectory,
+      width: job.width,
+      height: job.height,
     };
   }
   const server = createServer(async (req, res) => {
@@ -125,8 +133,8 @@ export function createHelper({
       if (req.method === "GET" && req.url === "/v1/info")
         return send(200, {
           name: "YouTube Video Downloader Helper",
-          version: "3.0.0",
-          outputDirectory,
+          version: "3.1.0",
+          outputDirectory: await resolveOutputDirectory(),
         });
       if (req.method === "GET" && req.url === "/v1/jobs")
         return send(200, { jobs: [...jobs.values()].reverse().map(publicJob) });
@@ -153,10 +161,11 @@ export function createHelper({
       );
       if (duplicate) return send(200, { job: publicJob(duplicate) });
       const id = randomUUID();
+      const jobDirectory = await resolveOutputDirectory();
       const args = downloadArgs(
         url,
         data.quality,
-        outputDirectory,
+        jobDirectory,
         id,
         ffmpegDirectory,
       );
@@ -167,6 +176,7 @@ export function createHelper({
         state: "preparing",
         progress: "Finding video and audio…",
         createdAt: new Date().toISOString(),
+        outputDirectory: jobDirectory,
       };
       while (jobs.size >= 50) {
         const oldest = [...jobs.keys()].find((key) => !active.has(key));
@@ -203,7 +213,7 @@ export function createHelper({
               if (
                 typeof filename === "string" &&
                 path.dirname(path.resolve(filename)) ===
-                  path.resolve(outputDirectory)
+                  path.resolve(jobDirectory)
               )
                 job.filename = filename;
             } catch {
@@ -226,6 +236,33 @@ export function createHelper({
         if (code === 0 && job.filename) {
           try {
             await access(job.filename);
+            try {
+              const { stdout } = await runFile(
+                path.join(ffmpegDirectory, "ffprobe.exe"),
+                [
+                  "-v",
+                  "error",
+                  "-select_streams",
+                  "v:0",
+                  "-show_entries",
+                  "stream=width,height",
+                  "-of",
+                  "json",
+                  job.filename,
+                ],
+                { windowsHide: true, timeout: 10000, maxBuffer: 65536 },
+              );
+              const video = JSON.parse(stdout).streams?.[0];
+              if (
+                Number.isInteger(video?.width) &&
+                Number.isInteger(video?.height)
+              ) {
+                job.width = video.width;
+                job.height = video.height;
+              }
+            } catch {
+              /* A saved file stays saved even when metadata inspection is unavailable. */
+            }
             job.state = "complete";
             job.progress = "Saved with video and audio.";
             return;

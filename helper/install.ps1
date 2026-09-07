@@ -24,17 +24,24 @@ $binDirectory = Join-Path $Destination 'bin'
 $extensionDirectory = Join-Path $Destination 'extension'
 New-Item -ItemType Directory -Path $Destination,$helperDirectory,$binDirectory,$extensionDirectory -Force | Out-Null
 Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $Destination 'node.exe') -Force
-foreach ($name in @('server.mjs','native.mjs','native-protocol.mjs')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force }
+foreach ($name in @('server.mjs','native.mjs','native-protocol.mjs','settings.mjs')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $helperDirectory $name) -Force }
 Copy-Item -LiteralPath (Join-Path $projectRoot 'extension\youtube-url.js') -Destination (Join-Path $extensionDirectory 'youtube-url.js') -Force
 Copy-Item -LiteralPath $oldConfig.executable -Destination (Join-Path $binDirectory 'yt-dlp.exe') -Force
 foreach ($name in @('ffmpeg.exe','ffprobe.exe')) { Copy-Item -LiteralPath (Join-Path $oldConfig.ffmpegDirectory $name) -Destination (Join-Path $binDirectory $name) -Force }
 $config = @{executable=(Join-Path $binDirectory 'yt-dlp.exe');ffmpegDirectory=$binDirectory;outputDirectory=$oldConfig.outputDirectory}
+$installedConfigPath=Join-Path $helperDirectory 'config.json'
+if(Test-Path -LiteralPath $installedConfigPath) {
+ $savedConfig=Get-Content -LiteralPath $installedConfigPath -Raw | ConvertFrom-Json
+ if($savedConfig.outputDirectory) { $config.outputDirectory=$savedConfig.outputDirectory }
+}
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText((Join-Path $helperDirectory 'config.json'),($config|ConvertTo-Json),$utf8)
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 if (-not (Test-Path -LiteralPath $compiler)) { $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
 & $compiler /nologo /target:winexe ("/out:" + (Join-Path $Destination 'native-host.exe')) (Join-Path $PSScriptRoot 'NativeHost.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Could not build the native launcher.' }
+& $compiler /nologo /target:winexe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll ("/out:" + (Join-Path $Destination 'folder-picker.exe')) (Join-Path $PSScriptRoot 'FolderPicker.cs')
+if ($LASTEXITCODE -ne 0) { throw 'Could not build the folder picker.' }
 $manifestPath = Join-Path $Destination 'native-host.json'
 $allowedOrigins = @("chrome-extension://$ExtensionId/")
 # Preserve registrations for other copies installed by this same user.
@@ -44,7 +51,7 @@ if (Test-Path -LiteralPath $manifestPath) {
 }
 $manifest = @{name=$HostName;description='YouTube Video Downloader';path=(Join-Path $Destination 'native-host.exe');type='stdio';allowed_origins=@($allowedOrigins | Select-Object -Unique)}
 [System.IO.File]::WriteAllText($manifestPath,($manifest|ConvertTo-Json -Depth 4),$utf8)
-foreach ($browserKey in @('Google\Chrome','Microsoft\Edge')) {
+foreach ($browserKey in @('Google\Chrome','Microsoft\Edge','BraveSoftware\Brave-Browser')) {
  $registryPath = "HKCU:\Software\$browserKey\NativeMessagingHosts\$HostName"
  New-Item -Path $registryPath -Force | Out-Null
  Set-Item -LiteralPath $registryPath -Value $manifestPath
