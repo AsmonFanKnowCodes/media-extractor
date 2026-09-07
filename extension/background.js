@@ -27,7 +27,7 @@ function nativeRequest(method, params) {
         clearTimeout(entry.timer);
         entry.reject(
           new Error(
-            `The downloader could not connect. Run Install YouTube Downloader.exe once, then check the connection. ${detail}`,
+            `The downloader could not connect. Run MediaExtractor-Setup.exe once, then check the connection. ${detail}`,
           ),
         );
       }

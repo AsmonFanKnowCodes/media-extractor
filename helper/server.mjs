@@ -180,7 +180,7 @@ export function createHelper({
       if (mediaType === "photos" && !galleryExecutable)
         return send(503, {
           error:
-            "Photo support needs the updated helper. Run Update YouTube Downloader.cmd once.",
+            "Photo support needs the updated helper. Run MediaExtractor-Setup.exe once.",
         });
       if (active.size >= 2)
         return send(409, {
@@ -291,7 +291,7 @@ export function createHelper({
       });
       child.on("error", (error) => {
         job.state = "failed";
-        job.error = `Cannot start downloader: ${error.message}. Run Install YouTube Downloader.exe again.`;
+        job.error = `Cannot start downloader: ${error.message}. Run MediaExtractor-Setup.exe again.`;
         active.delete(id);
       });
       child.on("close", async (code) => {
@@ -379,7 +379,7 @@ async function main() {
   const config = JSON.parse(
     await readFile(path.join(directory, ".local", "config.json"), "utf8").catch(
       () => {
-        throw new Error("Run Install YouTube Downloader.exe first.");
+        throw new Error("Run MediaExtractor-Setup.exe first.");
       },
     ),
   );

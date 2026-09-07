@@ -75,7 +75,7 @@ try {
     "https://www.youtube.com/watch?v=BaW_jenozKc",
   );
   await expect(app.locator("#connection-detail")).toContainText(
-    "Install YouTube Downloader.exe",
+    "MediaExtractor-Setup.exe",
   );
   assert.equal(await app.locator("#youtube-token,#gallery,#scan").count(), 0);
   await expect(app.locator("#setup-banner")).toBeVisible();
@@ -84,8 +84,18 @@ try {
     .click();
   await expect(app.locator("#help-view")).toBeVisible();
   await expect(
+    app.getByRole("link", { name: "Download Windows Setup ↗", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    "https://github.com/AsmonFanKnowCodes/media-extractor/releases/latest/download/MediaExtractor-Setup.exe",
+  );
+  await app
+    .getByText("Advanced: manual Node.js download", { exact: true })
+    .click();
+  await expect(
     app.getByRole("link", { name: "Download Node.js LTS ↗", exact: true }),
   ).toHaveAttribute("href", "https://nodejs.org/en/download");
+  await app.getByText("Prefer the source ZIP?", { exact: true }).click();
   await expect(
     app.getByRole("link", { name: "Download project ZIP ↗", exact: true }),
   ).toHaveAttribute(
@@ -96,6 +106,7 @@ try {
   await expect(app.locator("#help-view")).toContainText("edge://extensions");
   await expect(app.locator("#help-view")).toContainText("brave://extensions");
   await mkdir(path.join(root, "test-results"), { recursive: true });
+  await app.locator("#help-view h2").scrollIntoViewIfNeeded();
   await app.screenshot({
     path: path.join(root, "test-results", "help-panel.png"),
     clip: { x: 0, y: 0, width: 420, height: 512 },

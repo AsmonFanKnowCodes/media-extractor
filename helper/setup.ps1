@@ -1,8 +1,11 @@
+param([string]$WorkingDirectory=$PSScriptRoot,[string]$NodePath)
 $ErrorActionPreference = 'Stop'
-$helperRoot = $PSScriptRoot
+$helperRoot = $WorkingDirectory
 $localDirectory = Join-Path $helperRoot '.local'
 $binDirectory = Join-Path $helperRoot 'bin'
-$nodeCommand = Get-Command node -ErrorAction Stop
+. (Join-Path $PSScriptRoot 'runtime.ps1')
+if(-not $NodePath) { $NodePath=Get-MediaNode -CacheDirectory (Join-Path $helperRoot '.local\runtime') }
+$nodeCommand=@{Source=$NodePath}
 if ([int]((& $nodeCommand.Source --version).TrimStart('v').Split('.')[0]) -lt 22) { throw 'Install Node.js 22 or later first.' }
 New-Item -ItemType Directory -Path $localDirectory,$binDirectory -Force | Out-Null
 
@@ -25,9 +28,10 @@ $galleryDownloader=Join-Path $binDirectory 'gallery-dl.exe'
 # This is the official nightly-build repository linked by gallery-dl's README.
 Get-VerifiedReleaseAsset 'gdl-org/builds' 'gallery-dl_windows.exe' $galleryDownloader
 $ffmpegCommand = Get-Command ffmpeg -ErrorAction SilentlyContinue
-if ($ffmpegCommand) {
-  $ffmpegDirectory = Split-Path -Parent $ffmpegCommand.Source
-} elseif (Test-Path -LiteralPath (Join-Path $binDirectory 'ffmpeg.exe')) {
+$detectedFfmpegDirectory=if($ffmpegCommand){Split-Path -Parent $ffmpegCommand.Source}else{$null}
+if ($detectedFfmpegDirectory -and (Test-Path -LiteralPath (Join-Path $detectedFfmpegDirectory 'ffprobe.exe'))) {
+  $ffmpegDirectory = $detectedFfmpegDirectory
+} elseif ((Test-Path -LiteralPath (Join-Path $binDirectory 'ffmpeg.exe')) -and (Test-Path -LiteralPath (Join-Path $binDirectory 'ffprobe.exe'))) {
   $ffmpegDirectory = $binDirectory
 } else {
   $archivePath = Join-Path $localDirectory 'ffmpeg.zip'
@@ -45,11 +49,11 @@ if ($ffmpegCommand) {
 $downloadsDirectory = (Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders').'{374DE290-123F-4565-9164-39C4925E467B}'
 if ($downloadsDirectory) { $downloadsDirectory = [Environment]::ExpandEnvironmentVariables($downloadsDirectory) }
 else { $downloadsDirectory = Join-Path $env:USERPROFILE 'Downloads' }
-$config = @{ executable=$downloader; galleryExecutable=$galleryDownloader; ffmpegDirectory=$ffmpegDirectory; outputDirectory=(Join-Path $downloadsDirectory 'Media Extractor\YouTube') }
+$config = @{ executable=$downloader; galleryExecutable=$galleryDownloader; ffmpegDirectory=$ffmpegDirectory; outputDirectory=(Join-Path $downloadsDirectory 'Media Extractor') }
 $config | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $localDirectory 'config.json') -Encoding UTF8
 # Windows PowerShell writes a BOM; Node's JSON parser expects plain UTF-8.
 $configPath = Join-Path $localDirectory 'config.json'
 [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json), [System.Text.UTF8Encoding]::new($false))
 & $downloader --version
 if ($LASTEXITCODE -ne 0) { throw 'yt-dlp could not start.' }
-Write-Host 'Dependencies ready. Continue with Install YouTube Downloader.exe.'
+Write-Host 'Dependencies ready.'

@@ -1,119 +1,97 @@
-# Install Media Extractor from zero
+# Install Media Extractor
 
-For **Windows 10/11 (64-bit)** and **Brave**. Chrome and Edge are also supported. You do not need Git, npm commands, or a terminal running while downloading.
+Media Extractor supports **Windows 10/11 (x64)** with **Google Chrome, Microsoft Edge, or Brave**. Choose whichever browser you normally use. No separate Node.js installation, coding, or administrator access is required.
 
-## 1. Remove the old extension if you are starting over
+## 1. Download Windows Setup
 
-Skip this step on a computer that has never had Media Extractor.
+[**Download MediaExtractor-Setup.exe**](https://github.com/AsmonFanKnowCodes/media-extractor/releases/latest/download/MediaExtractor-Setup.exe)
 
-1. In Brave's address bar, enter `brave://extensions`.
-2. Find **Media Extractor**, or an older **YouTube Video Downloader** entry.
-3. Click **Remove** on the old installation. If you have multiple copies of this project installed, remove those old copies too.
-4. Close Brave. Close Chrome/Edge too if you used this extension there.
+The installer is also available under **Releases** on the [project page](https://github.com/AsmonFanKnowCodes/media-extractor/releases/latest). It contains the extension and setup files, so you do not need to download the source-code ZIP.
 
-Removing the extension clears its popup preferences, but **does not delete your downloaded videos/photos**. The Windows app's existing save-folder setting is retained by the installer.
+The installer is not code-signed yet. Download it only from this project's release page. SHA256 checksums are provided with each release.
 
-## 2. Install Node.js once
+## 2. Run the setup wizard
 
-1. Visit [the official Node.js download page](https://nodejs.org/en/download).
-2. Choose an **LTS release, version 22 or newer**, and its **Windows Installer (.msi)** for x64.
-3. Run the installer using its normal defaults, including adding Node.js to PATH.
-4. If Node.js 22 or newer is already installed, skip this step.
+1. Open **MediaExtractor-Setup.exe**.
+2. Choose **Google Chrome**, **Microsoft Edge**, or **Brave** for the final browser instructions.
+3. If you already use Media Extractor, finish downloads and close browsers using it first.
+4. Click **Install** and wait for setup to finish. The first installation may take a few minutes, depending on your connection.
 
-Node is needed for the installer and downloader. You do not have to open it or write code.
+Setup obtains and verifies the required components automatically. It uses a supported existing Node.js runtime when available, or downloads a private LTS runtime from nodejs.org. It installs yt-dlp, gallery-dl and FFmpeg, and registers the background app for all three supported browsers. It does not add a Windows startup task or require a terminal to stay open.
 
-## 3. Download the project from GitHub
-
-1. Open [AsmonFanKnowCodes/media-extractor](https://github.com/AsmonFanKnowCodes/media-extractor).
-2. Click the green **Code** button.
-3. Click **Download ZIP**.
-4. Find the downloaded `media-extractor-main.zip` in your Downloads folder.
-5. Right-click the ZIP and choose **Extract All**.
-6. Extract it somewhere permanent, such as `Documents\MediaExtractor`.
-
-Open the extracted folder until you see these items together:
+Files are installed for your Windows account under:
 
 ```text
-extension\
-helper\
-Install YouTube Downloader.cmd
-Update YouTube Downloader.cmd
-README.md
+%LOCALAPPDATA%\MediaExtractor
 ```
 
-**Do not run the installer from inside the ZIP.** Keep the extracted project folder in this location: the unpacked extension loads its files directly from there.
+Existing save-folder settings are kept. Downloaded videos and photos are not removed.
 
-## 4. Install the background app once
+## 3. Add the extension to your browser
 
-With Brave closed:
+The wizard ends with **One browser step left**. Browser security requires this step until the extension is distributed through a browser store.
 
-1. Double-click **Install YouTube Downloader.cmd** in the extracted project folder.
-2. A command window may appear briefly while the installer is built. Then the setup window opens.
-3. Wait for **Setup complete**. The first installation downloads the required tools, so it can take a few minutes.
-4. Click **OK** when setup finishes.
-
-The filename is left over from the original YouTube-only version; **it installs the helper for all supported platforms**. GitHub's source ZIP does not include a prebuilt EXE—the CMD file builds it for you.
-
-Setup installs yt-dlp, gallery-dl, FFmpeg and a private Node runtime into your Windows user account, and registers the background app for Brave/Chrome/Edge. There is no pairing key to copy.
-
-## 5. Load the extension in Brave
-
-1. Open Brave and enter `brave://extensions` in the address bar.
-2. Turn on **Developer mode**, usually at the top right.
+1. Click **Open browser extensions** in the wizard.
+2. Turn on **Developer mode** on that page.
 3. Click **Load unpacked**.
-4. Select the **extension** subfolder inside the same extracted project from step 3. This is the folder containing `manifest.json`.
-5. Confirm that **Media Extractor** appears in the list.
-6. Open the puzzle-piece **Extensions** menu on the browser toolbar and pin **Media Extractor**.
+4. Use **Copy extension folder** in the wizard, paste that path into the folder chooser, and select the folder.
+5. Pin **Media Extractor** from your browser's Extensions/puzzle-piece menu.
 
-For Chrome, use `chrome://extensions`; for Edge, use `edge://extensions`.
+The correct folder is the **installed** copy:
 
-## 6. Start your first download
+```text
+%LOCALAPPDATA%\MediaExtractor\extension
+```
 
-1. Open a supported post/video, then click the pinned Media Extractor icon. You can also paste its link into the popup yourself.
-2. Wait for the **Ready** badge.
+If you open the browser page yourself:
+
+| Browser        | Extensions page       |
+| -------------- | --------------------- |
+| Google Chrome  | `chrome://extensions` |
+| Microsoft Edge | `edge://extensions`   |
+| Brave          | `brave://extensions`  |
+
+The setup download or extracted source folder can be removed afterward. Keep the installed folder above—it contains the extension's working files.
+
+## 4. Download a post
+
+1. Open a supported post and click the pinned extension icon, or paste a post link into the popup.
+2. Wait for **Ready**.
 3. Choose **Video** or **Photos**. YouTube supports Video only.
-4. For video, choose **720p**, **1080p**, **1440p**, **4K**, or **Best available**. These are maximums, not upscaling.
-5. To change the save folder, click **Save location**, then **Browse…** in Settings. Select a folder. If the popup closes when the Windows chooser opens, reopen the extension afterward.
-6. Click **Download video** or **Download photos**.
-7. Open **Activity** to see progress, failures, and saved files.
+4. Choose a video limit: 720p, 1080p, 1440p, 4K, or **Best available**. Photos use their supplied resolution; no upscaling is performed.
+5. Change **Save location** if desired.
+6. Click **Download** and check **Activity** for progress and saved files.
 
-You can close the popup. **Keep Brave running until downloads finish.** The background app starts automatically; you never need to start the old helper window manually.
+You may close the popup. Keep your browser running until downloads finish. On later uses, just click the extension—there is no manual helper startup.
 
-## Social posts and login
+## Social-post login
 
-Supported platforms: YouTube, Instagram, X, Reddit, TikTok and Facebook. Use individual post links, not profile/feed URLs. For a mixed post, run Video and Photos separately.
+YouTube, Instagram, X, Reddit, TikTok and Facebook post links are supported. Some sites require login or block automated access.
 
-Some sites require login or block automated access. **Settings → Use my browser login for social posts** is optional and off by default. Enabling it allows the local downloader to read cookies from the browser you select to make authenticated requests. Only enable it for content you may access. Browser protection, account restrictions and website changes can still prevent a download.
+Optional login access is **off by default**. To enable it, open Settings, turn on **Use my browser login for social posts**, and select the browser where you are signed in. This permits the local downloader to read that browser's cookies for authenticated requests. Browser protections and site restrictions may still prevent access. It does not apply to YouTube or bypass DRM/access restrictions.
 
-## If something goes wrong
+## Updating or repairing
 
-### “An unknown error occurred when fetching the script”
+Finish downloads, close browsers using Media Extractor, and run the newest **MediaExtractor-Setup.exe**. Then click **Reload** for Media Extractor on your browser's Extensions page. Your chosen save folder is preserved.
 
-This is a browser-side script loading error, not a YouTube download error. Confirm you extracted the **whole repository**, loaded its **extension** folder, and have not moved or deleted the files.
+If upgrading from an old copy loaded from Downloads/Documents, load the installed extension folder shown by the new wizard. Remove the old extension entry if both copies are listed, so you do not accidentally open the outdated one.
 
-On `brave://extensions`, open the extension's **Errors** page and click **Clear all**. Return to the extension card, click **Reload**, wait a few seconds, then reopen its popup. If the same error returns, use **Remove** and load the `extension` folder again. Record the fresh error if it still occurs; do not assume an old error entry describes the current version.
+### Common issues
 
-### “Native messaging host not found” / “Setup needed”
+- **Setup says the app is running:** finish downloads and close browsers using it, then click **Retry**. Setup does not forcibly terminate your browser.
+- **“Native messaging host not found” / “Setup needed”:** rerun the setup app, then load/reload the installed `extension` folder.
+- **Script-loading error:** confirm that the loaded folder is `%LOCALAPPDATA%\MediaExtractor\extension`. Clear the old error log and Reload. If needed, remove the extension entry and load that folder again.
+- **Node or tool download failed:** check your internet connection and retry. Setup verifies downloads before using them. It does not disable browser/Windows security protections.
+- **Post unavailable / login required:** verify the post in your browser. Try the optional login setting only for content you may access. A public post is not a guarantee of automated downloading.
 
-Close Brave and rerun **Install YouTube Downloader.cmd from the same project folder you loaded**. Reopen Brave and the extension. If the folder was moved, rerun the installer from its new location.
+macOS, Linux, Firefox, Safari and mobile browsers are not supported by this installer yet.
 
-### “Node is not recognized” or Node.js missing
+## Installing from the source ZIP instead
 
-Install Node.js 22 or newer from step 2, then reopen the installer. If Windows still does not find it, sign out and back in, or restart Windows to refresh PATH.
+For developers or users who prefer source:
 
-### Installer says a file is in use
+1. On GitHub, choose **Code → Download ZIP**, then **Extract All**.
+2. Double-click **Install Media Extractor.cmd** in the extracted project.
+3. It builds and opens the same setup wizard. Follow the normal steps above.
 
-Finish your downloads and close all browsers using this extension, then retry. Do not update while a download is running.
-
-### Website says login required / unavailable / blocked
-
-Verify that the post exists and that you can open it normally. If appropriate, enable the optional Brave-login setting. Private content you cannot access, DRM, active live streams, and site blocks are not bypassed. Public availability alone does not guarantee automated downloading.
-
-## Updating later
-
-- To update the downloader tools: finish downloads, close Brave, run **Update YouTube Downloader.cmd**, then reopen Brave.
-- To update the extension's code: download and extract the latest GitHub ZIP. If using a new folder, rerun its installer and load its `extension` folder. If updating the existing folder, replace the extension files together while the extension is not running, then click **Reload**.
-
-Saved downloads remain on disk. Keep the permanent project folder and do not leave multiple old copies of the extension enabled.
-
-For in-app instructions, click the **? Help** button in the popup header. It includes Node.js LTS and project ZIP links. For optional login access, choose **Brave**, **Google Chrome**, or **Microsoft Edge** in Settings; the helper uses only that selection. The current Windows installer does not support macOS, Linux, Firefox, Safari, or mobile browsers.
+Node.js and npm are not required to build this installer; the bootstrap uses the .NET Framework compiler included with Windows. The older YouTube-named CMD files remain compatibility shortcuts, but new instructions use Media Extractor names.

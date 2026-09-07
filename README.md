@@ -1,90 +1,49 @@
 # Media Extractor
 
-**New here? Follow [Install from zero — GitHub ZIP to your first download](INSTALL.md).** No Git or npm commands are required for normal installation.
+A compact browser extension for downloading videos and photo posts from **YouTube, Instagram, X, Reddit, TikTok and Facebook**. Files are saved locally using an automatically started background app.
 
-A personal media-tool extension for Brave / Chrome / Edge. YouTube, Instagram, X, Reddit, TikTok, and Facebook post downloads are supported through the local helper. Version 3 starts its Windows downloader automatically through native messaging. No terminal startup or pairing key is needed for normal use.
+[**Download Windows Setup**](https://github.com/AsmonFanKnowCodes/media-extractor/releases/latest/download/MediaExtractor-Setup.exe) · [Installation guide](INSTALL.md) · [Releases](https://github.com/AsmonFanKnowCodes/media-extractor/releases)
 
-## Multi-platform posts (version 6)
+## Install
 
-Paste a supported post URL; the platform and its official icon are detected automatically. Choose **Video** or **Photos**. YouTube supports videos; Instagram, X, Reddit, TikTok and Facebook support both modes where their extractors can access the post. For a mixed post, run each mode to save both kinds of media.
+For **Windows 10/11 x64** and **Chrome, Edge or Brave**:
 
-**Video** downloads the available video(s), including audio when provided by the source. Quality choices are up to 720p, 1080p, 1440p, 4K (2160p), or **Best available** with no cap. No upscaling is performed. **Photos** saves the images found in that individual post, at the resolution supplied by the site, into a named folder under your chosen destination. Activity lists saved files and distinguishes partial success from complete failure.
+1. Download and run **MediaExtractor-Setup.exe**.
+2. Choose your browser and click **Install**. Required components are obtained automatically.
+3. Use the wizard's **Open browser extensions** and **Copy extension folder** buttons to add Media Extractor with **Developer mode → Load unpacked**.
+4. Pin the extension and start downloading.
 
-Use individual post links, not profiles, feeds, searches, subreddits or playlists. Supported examples include YouTube watch/Shorts, Instagram `/p/` and `/reel/`, X `/user/status/id`, Reddit `/comments/id` or `/gallery/id`, TikTok `/@user/video/id` and `/@user/photo/id`, and Facebook watch/reel/post/photo links. Short TikTok `vm`/`vt`, Facebook `fb.watch`, and Reddit `redd.it` links are also accepted.
+No separate Node.js setup, Git, npm commands, administrator account, or persistent terminal is needed. The installer includes its setup payload and installs into `%LOCALAPPDATA%\MediaExtractor`; the original download folder is not needed afterward. The installer is currently unsigned. See [INSTALL.md](INSTALL.md) for first-time setup, upgrades and troubleshooting.
 
-Sites may require authentication or block automated requests. **Settings → Use my browser login for social posts** is off by default. Enabling it explicitly permits the local downloader to read cookies from the browser you select for authenticated requests to social platforms. No cookie export is uploaded to a separate service; website requests use the session normally. This option does not apply to YouTube. Browser encryption, locked profiles, non-default profiles, expired sessions, or website restrictions can still prevent access. The setting does not bypass DRM or grant access to posts your account cannot view.
+## Features
 
-The helper now also needs gallery-dl. Existing users should run the updated installer once, then reload the extension. Setup downloads a SHA256-verified Windows executable from the official `gdl-org/builds` repository linked by gallery-dl's own README. The gallery tool is used for photos; yt-dlp and FFmpeg handle video.
+- Automatic recognition of individual post links on the six supported platforms.
+- **Video** or **Photos** mode; photo posts save into a folder with their images.
+- Video limits of **720p, 1080p, 1440p and 4K**, plus uncapped **Best available**. No upscaling.
+- Remembered save location and local file-dimension reporting.
+- Activity tracks completed, failed, partial and multi-file downloads.
+- In-popup **Help** with installation and troubleshooting instructions.
+- Optional login through the user's chosen Chrome, Edge or Brave session, off by default.
 
-Validation: all platform routes, gallery results, partial/empty posts and native integration are tested with fixture downloaders. Quality selection is also tested against the real yt-dlp executable. A live Instagram test redirected to login, and Reddit's live test was blocked by network security; unauthenticated live success on every platform is not claimed. No real browser cookies were read during testing.
+The popup can close while downloads continue; keep the browser running. Use post/video links rather than profiles or feeds. YouTube supports Video mode only. Mixed social posts can be downloaded once in each mode.
 
-## Shared visual foundation
+## Site access and privacy
 
-Click the pinned extension icon while watching YouTube. The downloader opens directly beneath the icon in a 420 × 512 popup; it no longer creates a browser tab. The shared design follows `design-system/MASTER.md`: flat white/gray surfaces, blue actions, pill controls, and bundled Inter typography. The official YouTube logo identifies the current tool.
+Site support depends on what the platform makes accessible. Some posts require login, and sites can block automated requests or change their extraction behavior. DRM and access restrictions are not bypassed. Only save media you own or have permission to download.
 
-- **Download:** video URL, quality, save-folder preview, and the download button.
-- **Activity:** progress, saved filenames, errors, and actual video dimensions.
-- **Settings:** choose a folder and resolve installation/connection issues.
+Cookie access requires explicitly enabling **Use my browser login for social posts** and selecting a browser. No browser credentials are read by default. When enabled, the local tools use that browser's cookies for website requests; no cookie export is uploaded to a separate service. Browser encryption, locked/non-default profiles and site restrictions may still prevent it. This option does not apply to YouTube.
 
-Closing the popup or clicking outside it does not stop a download. Native work stays in the background while Brave is running. Browsing for a folder can close the popup when Windows takes focus; select the folder, then reopen the icon. The saved folder will be refreshed. URL drafts and quality are remembered for the current source page.
+No analytics or hosted download service is included. Third-party tools are downloaded from their official distribution sources and verified using published SHA256 digests.
 
-Version 6 adds the photo engine: run the updated installer once before reloading the extension. The helper installed on this development PC has already been updated.
+## Architecture
 
-## Upgrade from version 2
+The extension uses Manifest V3, native JavaScript modules, and `activeTab`, `storage`, and `nativeMessaging` permissions. It does not scan whole websites or require localhost host access. The native host uses an exact extension allowlist, bounded framed messages and validated individual-post URLs. Downloader arguments are passed without a shell.
 
-1. Run **Install YouTube Downloader.exe** once from this project folder. If you cloned the source and the EXE is missing, run **Install YouTube Downloader.cmd** to build and open the installer.
-2. On your browser's Extensions page, click **Reload** for YouTube Video Downloader and accept the native-app permission if prompted.
-3. Close the old downloader tab and open the extension again. It should say **Downloader ready**.
+yt-dlp handles videos, gallery-dl handles photos, and FFmpeg/FFprobe combine tracks and inspect files. The engine's private loopback endpoint stays inside the native process and is not exposed to the extension UI. The installed runtime and settings remain under the current Windows user's app directory. The native-host identifier retains its historical name for compatibility.
 
-The installer keeps your existing download directory. The old manually started helper is no longer needed; let any existing downloads finish before closing its window.
+Design rules are in [design-system/MASTER.md](design-system/MASTER.md). Official platform-asset provenance and the bundled Inter license are in [extension/assets](extension/assets).
 
-## First installation (Windows 10/11 x64)
-
-1. Install Node.js 22 or newer if needed. Setup copies the runtime into the private app folder for subsequent use.
-2. Download/extract the full project package. Open `brave://extensions`, `chrome://extensions` or `edge://extensions`, enable **Developer mode**, click **Load unpacked**, and select this project's **extension** folder.
-3. Run **Install YouTube Downloader.exe** (or **Install YouTube Downloader.cmd** when building from Git).
-4. Pin the extension and open it. If it was already open during installation, click **Check connection**.
-
-The installer runs for the current Windows user without administrator rights. It verifies downloaded yt-dlp / FFmpeg releases using published SHA256 digests, copies tools and Node to `%LOCALAPPDATA%/YouTubeVideoDownloader`, and registers the native host for Brave, Chrome and Edge. The .NET Framework compiler included with Windows builds the small native launcher.
-
-It authorizes the unpacked extension ID derived from this project's extension-folder path. Keep the extension in that location. If you move its folder, run the installer from the new location again. Advanced installs can pass `-ExtensionId` to `helper/install.ps1`. Browser-store publishing/review is separate from this personal unpacked installation.
-
-## Save folder and quality
-
-Open **Settings** and use **Browse…** for the Windows folder chooser. Selecting a folder saves it immediately. Alternatively, type an existing absolute path under **Save videos to** and click **Save folder**. The app checks that the folder is writable and remembers it for future downloads. Cancelling the dialog keeps the previous folder. You can create a new folder inside the Windows chooser.
-
-The quality selector controls yt-dlp's real format selection. The 720p/1080p/1440p/4K options cap video height; **Best available** removes the cap and prioritizes resolution before preferring MP4. No upscaling is performed. Completed files show actual width × height inspected with FFprobe, when available.
-
-## Download
-
-Open a YouTube video or Short and click the extension icon to fill its URL automatically. Alternatively, paste a link. Choose up to **720p**, **1080p**, **1440p**, **4K**, or **Best available**, then click **Download video**.
-
-The native app starts in the background on demand. yt-dlp downloads the media and FFmpeg combines video and audio. MP4 is preferred, with MKV as a fallback. Quality cannot exceed the original video. The save directory is shown in the extension; existing installations keep `Downloads/Media Extractor/YouTube`.
-
-Up to two downloads can run per browser connection. You can close the downloader tab, but **keep Brave/Chrome/Edge running until downloads finish**. Closing the browser, disabling/reloading the extension, or restarting the native host can interrupt downloads. Activity shows recent job status, which resets when the native connection restarts; downloaded files remain. These files do not appear in browser download history.
-
-Private, login/age-restricted, unavailable and DRM-protected videos, playlists, and active live streams are not supported. Browser cookies are read only when you explicitly enable the optional Brave-login setting for social posts. Download content you own or have permission to save.
-
-## Update and troubleshooting
-
-- **Connection failed:** run the installer, then Check connection. Confirm that the loaded `extension` folder belongs to the same project location.
-- **YouTube extraction stopped working:** close Brave, Chrome and Edge, run **Update YouTube Downloader.cmd**, then reopen the browser.
-- **Installer cannot overwrite a file:** close all Brave/Chrome/Edge windows so the old native host exits, then install again.
-- **Change download folder:** use **Browse…** to select a folder, or enter an existing absolute folder path and click **Save folder**. The choice persists across browser restarts and app updates. Running downloads keep their original destination.
-
-Removing the extension prevents it from starting the native app. The app is not a Windows startup service or scheduled task. Its files live in the private app folder above; registration lives in the current user's Brave/Chrome/Edge `NativeMessagingHosts/com.personal.youtube_downloader` registry keys.
-
-## Permissions and architecture
-
-- `activeTab`: capture the current URL after the toolbar icon is clicked.
-- `storage`: store source-tab references. Old pairing keys are no longer used.
-- `nativeMessaging`: launch and communicate with the installed downloader.
-
-The extension has no localhost host permission, general media scanner, or browser downloads permission. Native registration uses an exact extension allowlist. The native host validates its caller, framed messages and commands, and accepts only normalized single-post URLs from the six supported platforms. The tested download engine runs inside the native process behind a private, randomly authenticated loopback endpoint; this is not exposed to the extension UI. Downloader processes receive fixed arguments without a shell.
-
-There are no analytics or cloud uploads. The native app contacts YouTube. Tool binaries, machine configuration, and generated installer EXEs are excluded from Git.
-
-## Development and validation
+## Development
 
 ```sh
 npm ci
@@ -94,12 +53,18 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Set `CHROMIUM_EXECUTABLE` to an installed Brave/Chrome/Edge executable if needed. On a fresh checkout, run the installer first to provision dependencies used by browser tests. Tests register a uniquely named temporary native host for an isolated profile and compile a fixture downloader. They verify real native startup, installation errors, quality selection, success/failure handling, tab-close continuity, source autofill and responsive layout. Temporary registry entries and files are removed afterward. Fixture tests do not contact live YouTube. Set `NATIVE_IDLE_TEST=1` to additionally wait beyond the usual service-worker idle interval with the UI tab closed.
+Set `CHROMIUM_EXECUTABLE` to an installed compatible browser executable if necessary. Browser tests use isolated profiles, temporary native registrations and fixture downloaders. They exercise the actual popup dimensions, installation errors, platform routing, multi-file results, folder settings, optional browser selection and background continuity. They do not read real cookies. Unit tests also exercise real yt-dlp format selection when its executable is provisioned.
 
-Build the installer with `powershell -NoProfile -ExecutionPolicy Bypass -File helper/build-installer.ps1`. Run `node scripts/live-smoke.mjs <YouTube URL>` for an optional real download through the installed app. Use short videos you may download.
+Build the self-contained Windows setup app:
 
-References: [Chrome native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [YouTube runtime setup](https://github.com/yt-dlp/yt-dlp/wiki/EJS), [FFmpeg builds](https://github.com/yt-dlp/FFmpeg-Builds). Third-party tools retain their own licenses and are downloaded during setup, not committed here.
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File helper/build-installer.ps1
+```
 
-Photo extractor references: [gallery-dl supported sites](https://github.com/mikf/gallery-dl/blob/master/docs/supportedsites.md), [gallery-dl installation](https://github.com/mikf/gallery-dl#installation).
+Output: `MediaExtractor-Setup.exe`. Its embedded payload includes only extension files and top-level helper source files; local configs, keys, tool binaries and test outputs are excluded. `Install Media Extractor.cmd` builds and opens the same wizard. `Update Media Extractor.cmd` provides a source-tree update path.
 
-For in-app instructions, click the **? Help** button in the popup header. It includes Node.js LTS and project ZIP links. For optional login access, choose **Brave**, **Google Chrome**, or **Microsoft Edge** in Settings; the helper uses only that selection. The current Windows installer does not support macOS, Linux, Firefox, Safari, or mobile browsers.
+`helper/install.ps1` supports isolated test destinations and host names. `-IgnoreSystemNode` exercises private runtime provisioning; `-RefreshTools` fetches current media-tool releases. Optional `node scripts/live-smoke.mjs <YouTube URL>` checks an actual permitted download.
+
+All social routes are fixture-tested. A live Instagram check required login and Reddit blocked the test request; unauthenticated success on every platform is not claimed. A real YouTube download with audio/video has been verified.
+
+References: [Chrome native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [Node.js](https://nodejs.org/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [gallery-dl](https://github.com/mikf/gallery-dl), [FFmpeg builds](https://github.com/yt-dlp/FFmpeg-Builds). Third-party tools retain their own licenses.
