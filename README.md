@@ -1,5 +1,7 @@
 # Media Extractor
 
+**New here? Follow [Install from zero — GitHub ZIP to your first download](INSTALL.md).** No Git or npm commands are required for normal installation.
+
 A personal media-tool extension for Brave / Chrome / Edge. YouTube, Instagram, X, Reddit, TikTok, and Facebook post downloads are supported through the local helper. Version 3 starts its Windows downloader automatically through native messaging. No terminal startup or pairing key is needed for normal use.
 
 ## Multi-platform posts (version 6)
